@@ -1,0 +1,21 @@
+[project]
+name = "oao"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Falco90", email = "falcorodenburg@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "langchain>=1.4.0",
+    "langchain-ollama>=1.1.0",
+    "langgraph>=1.2.11",
+]
+
+[project.scripts]
+oao = "oao:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
