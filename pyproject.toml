@@ -11,6 +11,8 @@ dependencies = [
     "langchain>=1.4.0",
     "langchain-ollama>=1.1.0",
     "langgraph>=1.2.11",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
 ]
 
 [project.scripts]
