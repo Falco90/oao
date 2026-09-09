@@ -5,6 +5,7 @@ load_dotenv()
 from oao.models.discovery import ProtocolDiscovery
 from oao.models.llm import model
 from oao.state import TokenHolding
+from oao.services.the_graph_mcp import search_subgraphs
 
 async def discover_protocols(
     holdings: list[TokenHolding],
@@ -62,7 +63,12 @@ if __name__ == "__main__":
         ]
 
         result = await discover_protocols(holdings)
+        
+        mcp_result = await search_subgraphs(
+            result.protocols[0]
+        )
 
-        pprint(result.model_dump())
+        pprint(mcp_result)
+
 
     asyncio.run(main())

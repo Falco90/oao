@@ -8,3 +8,9 @@ class ProtocolDiscovery(BaseModel):
             "wallet holdings."
         )
     )
+    
+class SubgraphCandidate(BaseModel):
+    protocol: str
+    subgraph_id: str
+    ipfs_hash: str
+    display_name: str
