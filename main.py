@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 from oao.graph import build_graph
+from pprint import pprint
 
 
 wallet_address = os.environ["WALLET_ADDRESS"]
@@ -16,7 +17,7 @@ async def main():
         }
     )
 
-    print(result)
+    pprint(result, sort_dicts=False, width=100)
 
 if __name__ == "__main__":
     asyncio.run(main())
