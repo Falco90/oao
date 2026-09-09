@@ -1,5 +1,6 @@
 import os
 import requests
+from decimal import Decimal
 from oao.state import TokenHolding
 from oao.config.tokens import SUPPORTED_TOKEN_ADDRESSES
 
@@ -75,8 +76,8 @@ def _normalize_token_holdings(
         holdings.append(
             {
                 "symbol": token["symbol"],
-                "amount": float(token["value"]),
-                "chain": token["network"],
+                "amount": Decimal(str(token["value"])),
+                "network": token["network"],
                 "contract_address": token["contract"],
             }
         )
@@ -85,8 +86,8 @@ def _normalize_token_holdings(
         holdings.append(
             {
                 "symbol": token["symbol"],
-                "amount": float(token["value"]),
-                "chain": token["network"],
+                "amount": Decimal(str(token["value"])),
+                "network": token["network"],
                 "contract_address": None,
             }
         )
