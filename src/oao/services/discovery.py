@@ -2,10 +2,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from oao.models.discovery import ProtocolDiscovery
+from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
 from oao.state import TokenHolding
-from oao.services.the_graph_mcp import search_subgraphs
+from oao.services.the_graph_mcp import search_subgraphs, get_subgraph_schema
 
 async def discover_protocols(
     holdings: list[TokenHolding],
@@ -37,6 +37,66 @@ async def discover_protocols(
 
     return await structured_model.ainvoke(prompt)
 
+def build_subgraph_candidates(
+    protocol: str,
+    search_result: dict,
+) -> list[SubgraphCandidate]:
+    candidates = []
+
+    for subgraph in search_result["subgraphs"]:
+        deployment = subgraph.get("currentVersion", {}).get(
+            "subgraphDeployment",
+            {},
+        )
+
+        ipfs_hash = deployment.get("ipfsHash")
+
+        if not ipfs_hash:
+            continue
+
+        candidates.append(
+            SubgraphCandidate(
+                protocol=protocol,
+                subgraph_id=subgraph["id"],
+                ipfs_hash=ipfs_hash,
+                display_name=subgraph["metadata"]["displayName"].strip(),
+            )
+        )
+
+    return candidates
+
+def filter_ethereum_candidates(
+    protocol: str,
+    candidates: list[SubgraphCandidate],
+) -> list[SubgraphCandidate]:
+    protocol_name = protocol.lower()
+
+    filtered = []
+
+    for candidate in candidates:
+        name = candidate.display_name.lower()
+
+        if "ethereum" not in name:
+            continue
+
+        if protocol_name not in name:
+            continue
+
+        filtered.append(candidate)
+
+    return filtered
+
+def is_lending_schema(schema: str) -> bool:
+    required_markers = [
+        "type Market",
+        "rates:",
+        "totalValueLockedUSD",
+        "type Position",
+        "side: PositionSide",
+    ]
+
+    return all(marker in schema for marker in required_markers)
+
 if __name__ == "__main__":
     import asyncio
     from decimal import Decimal
@@ -61,14 +121,35 @@ if __name__ == "__main__":
                 ),
             },
         ]
+        
 
         result = await discover_protocols(holdings)
         
-        mcp_result = await search_subgraphs(
-            result.protocols[0]
+        protocol = result.protocols[0]
+        
+        search_result = await search_subgraphs(
+            protocol
         )
 
-        pprint(mcp_result)
+        candidates = build_subgraph_candidates(
+            protocol,
+            search_result,
+        )
+
+        ethereum_candidates = filter_ethereum_candidates(
+            protocol,
+            candidates,
+        )
+
+        for candidate in ethereum_candidates:
+            schema = await get_subgraph_schema(
+            candidate.subgraph_id
+            )
+
+            print(
+                candidate.display_name,
+                is_lending_schema(schema),
+            )
 
 
     asyncio.run(main())
