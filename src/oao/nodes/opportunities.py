@@ -1,17 +1,14 @@
-import os
-
-from oao.services.aave import discover_aave_opportunities
+from oao.services.discovery import discover_wallet_markets
 from oao.state import AgentState
 
 
 async def discover_opportunities(state: AgentState) -> dict:
-    api_key = os.environ["THE_GRAPH_GATEWAY_API_KEY"]
-
-    opportunities = await discover_aave_opportunities(
-        holdings=state["holdings"],
-        api_key=api_key,
+    best_markets = await discover_wallet_markets(
+        state["holdings"]
     )
 
     return {
-        "opportunities": opportunities,
+        "opportunities": list(
+            best_markets.values()
+        )
     }
