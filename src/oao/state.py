@@ -14,13 +14,9 @@ class Opportunity(TypedDict):
     symbol: str
     asset_address: str
     market_id: str
-    holding_amount: Decimal
-    market_amount: Decimal
     tvl_usd: Decimal
     supply_rate: Decimal
     is_active: bool
-    can_borrow: bool
-    can_use_as_collateral: bool
 
 
 class AgentState(TypedDict):
