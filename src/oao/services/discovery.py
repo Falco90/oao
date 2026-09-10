@@ -331,55 +331,27 @@ if __name__ == "__main__":
     from pprint import pprint
 
     async def main():
-        protocol = "Compound"
+        all_markets = []
 
-        result = await search_subgraphs(protocol)
-
-        candidates = build_subgraph_candidates(
-            protocol,
-            result,
-        )
-
-        ethereum_candidates = filter_ethereum_candidates(
-            protocol,
-            candidates,
-        )
-
-        validated_candidates = await validate_subgraph_candidates(
-            protocol,
-            ethereum_candidates,
-        )
-
-        normalized_markets = []
-
-        for candidate in validated_candidates:
-            markets = await fetch_all_markets(
-                candidate.subgraph_id
-            )
-
-            for market in markets:
-                if market["inputToken"]["symbol"] not in {
-                    "USDC",
-                    "USDT",
-                    "WETH",
-                }:
-                    continue
-
-                normalized_markets.append(
-                    normalize_discovered_market(
-                        protocol=candidate.protocol,
-                        subgraph_name=candidate.display_name,
-                        market=market,
-                    )
-                )
+        for protocol in [
+            "Aave",
+            "Compound",
+        ]:
+            markets = await discover_protocol_markets(protocol)
+            all_markets.extend(markets)
 
         eligible_markets = filter_eligible_markets(
-            normalized_markets
+            all_markets
         )
 
-        for market in eligible_markets:
+        best_markets = select_best_markets(
+            eligible_markets
+        )
+
+        for symbol, market in best_markets.items():
             print(
-                market["symbol"],
+                symbol,
+                market["protocol"],
                 market["subgraph_name"],
                 market["supply_rate"],
                 market["tvl_usd"],
