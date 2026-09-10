@@ -13,6 +13,7 @@ WETH_MAINNET = (
     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 )
 
+MIN_TVL_USD = Decimal("1000000")
 
 def get_holding_market_address(
     holding: TokenHolding,
@@ -118,6 +119,15 @@ async def discover_protocol_markets(
     validated_candidates = await validate_subgraph_candidates(
         protocol,
         ethereum_candidates,
+    )
+    
+    print(
+        protocol,
+        "validated:",
+        [
+            candidate.display_name
+            for candidate in validated_candidates
+        ],
     )
 
     normalized_markets = []
@@ -323,6 +333,8 @@ def filter_eligible_markets(
         for market in markets
         if market["is_active"]
         and market["supply_rate"] is not None
+        and market["supply_rate"] > 0
+        and market["tvl_usd"] >= MIN_TVL_USD
     ]
     
     
@@ -384,13 +396,27 @@ if __name__ == "__main__":
                 holding["contract_address"],
             )
             
+        protocol_discovery = await discover_protocols(
+            holdings
+        )
+
+        print("\n--- Discovered Protocols ---")
+        for protocol in protocol_discovery.protocols:
+            print(protocol)
+
         all_markets = []
 
-        for protocol in [
-            "Aave",
-            "Compound",
-        ]:
-            markets = await discover_protocol_markets(protocol)
+        for protocol in protocol_discovery.protocols:
+            print(f"\n--- Discovering {protocol} ---")
+
+            markets = await discover_protocol_markets(
+                protocol
+            )
+
+            print(
+                f"{protocol}: {len(markets)} markets"
+            )
+
             all_markets.extend(markets)
 
         eligible_markets = filter_eligible_markets(
