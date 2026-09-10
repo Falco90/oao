@@ -8,6 +8,26 @@ from oao.models.llm import model
 from oao.state import TokenHolding
 from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 
+MARKET_QUERY = """
+{
+  markets(first: 50) {
+    id
+    name
+    isActive
+    totalValueLockedUSD
+    inputToken {
+      id
+      symbol
+    }
+    rates {
+      rate
+      side
+      type
+    }
+  }
+}
+"""
+
 async def discover_protocols(
     holdings: list[TokenHolding],
 ) -> ProtocolDiscovery:
@@ -37,6 +57,71 @@ async def discover_protocols(
             """
 
     return await structured_model.ainvoke(prompt)
+
+async def discover_protocol_markets(
+    protocol: str,
+) -> list[dict]:
+    keywords = [
+        protocol,
+        f"{protocol} V3",
+    ]
+
+    all_subgraphs = []
+
+    for keyword in keywords:
+        result = await search_subgraphs(keyword)
+        all_subgraphs.extend(result["subgraphs"])
+
+    unique_subgraphs = {
+        subgraph["id"]: subgraph
+        for subgraph in all_subgraphs
+    }.values()
+
+    merged_result = {
+        "subgraphs": list(unique_subgraphs)
+    }
+
+    candidates = build_subgraph_candidates(
+        protocol,
+        merged_result,
+    )
+
+    ethereum_candidates = filter_ethereum_candidates(
+        protocol,
+        candidates,
+    )
+
+    validated_candidates = await validate_subgraph_candidates(
+        protocol,
+        ethereum_candidates,
+    )
+
+    normalized_markets = []
+
+    for candidate in validated_candidates:
+        result = await execute_subgraph_query(
+            candidate.subgraph_id,
+            MARKET_QUERY,
+        )
+
+        for market in result["data"]["markets"]:
+            if market["inputToken"]["symbol"] not in {
+                "USDC",
+                "USDT",
+                "WETH",
+            }:
+                continue
+
+            normalized_markets.append(
+                normalize_discovered_market(
+                    protocol=candidate.protocol,
+                    subgraph_name=candidate.display_name,
+                    market=market,
+                )
+            )
+
+    return normalized_markets
+
 
 def build_subgraph_candidates(
     protocol: str,
@@ -177,6 +262,17 @@ def normalize_discovered_market(
     }
     
 
+def filter_eligible_markets(
+    markets: list[dict],
+) -> list[dict]:
+    return [
+        market
+        for market in markets
+        if market["is_active"]
+        and market["supply_rate"] is not None
+    ]
+    
+    
 def select_best_markets(
     eligible_markets: list[dict],
 ) -> dict[str, dict]:
@@ -201,100 +297,18 @@ if __name__ == "__main__":
     from pprint import pprint
 
     async def main():
-        keywords = [
-            "Aave",
-            "Aave V3",
-        ]
+        markets = await discover_protocol_markets("Aave")
 
-        all_subgraphs = []
-
-        for keyword in keywords:
-            result = await search_subgraphs(keyword)
-            all_subgraphs.extend(result["subgraphs"])
-
-        unique_subgraphs = {
-            subgraph["id"]: subgraph
-            for subgraph in all_subgraphs
-        }.values()
-
-        merged_result = {
-            "subgraphs": list(unique_subgraphs)
-        }
-        
-        candidates = build_subgraph_candidates(
-            "Aave",
-            merged_result,
-        )
-
-        ethereum_candidates = filter_ethereum_candidates(
-            "Aave",
-            candidates,
-        )
-
-        validated_candidates = await validate_subgraph_candidates(
-            "Aave",
-            ethereum_candidates,
-        )
-
-        query = """
-        {
-            markets(first: 50) {
-                id
-                name
-                isActive
-                totalValueLockedUSD
-                inputToken {
-                    id
-                    symbol
-                }
-                rates {
-                    rate
-                    side
-                    type
-                }
-            }
-        }
-        """
-
-        normalized_markets = []
-
-        for candidate in validated_candidates:
-            result = await execute_subgraph_query(
-                candidate.subgraph_id,
-                query,
-            )
-
-            for market in result["data"]["markets"]:
-                if market["inputToken"]["symbol"] not in {
-                    "USDC",
-                    "USDT",
-                    "WETH",
-                }:
-                    continue
-
-                normalized_markets.append(
-                    normalize_discovered_market(
-                    protocol=candidate.protocol,
-                    subgraph_name=candidate.display_name,
-                    market=market,
-                    )
-                )
-        eligible_markets = [
-           market
-            for market in normalized_markets
-            if market["is_active"]
-            and market["supply_rate"] is not None
-        ]
-        
+        eligible_markets = filter_eligible_markets(markets)
         best_markets = select_best_markets(eligible_markets)
 
         for symbol, market in best_markets.items():
             print(
-            symbol,
-            market["subgraph_name"],
-            market["supply_rate"],
-            market["tvl_usd"],
-        )
+                symbol,
+                market["subgraph_name"],
+                market["supply_rate"],
+                market["tvl_usd"],
+            )
 
             
 asyncio.run(main())
