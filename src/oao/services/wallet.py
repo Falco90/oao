@@ -33,7 +33,12 @@ def _get_token_balances(wallet_address: str) -> list[dict]:
             timeout=30,
         )
 
-        response.raise_for_status()
+        if not response.ok:
+            raise RuntimeError(
+                f"Pinax balance request failed "
+                f"({response.status_code}): "
+            f"{response.text}"
+            )
 
         data = response.json()
         tokens = data["data"]
@@ -60,7 +65,12 @@ def _get_native_balance(wallet_address: str) -> dict:
         timeout=30,
     )
 
-    response.raise_for_status()
+    if not response.ok:
+        raise RuntimeError(
+            f"Pinax balance request failed "
+            f"({response.status_code}): "
+            f"{response.text}"
+        )
     
     data = response.json()["data"]
     
