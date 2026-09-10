@@ -7,6 +7,7 @@ from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
 from oao.state import TokenHolding
 from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
+from oao.services.wallet import get_token_holdings
 
 def build_market_query(
     first: int,
@@ -349,24 +350,17 @@ if __name__ == "__main__":
     from pprint import pprint
 
     async def main():
-        holdings: list[TokenHolding] = [
-            {
-                "symbol": "USDC",
-                "amount": Decimal("0.0001"),
-                "network": "mainnet",
-                "contract_address": (
-                    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-                ),
-            },
-            {
-                "symbol": "WETH",
-                "amount": Decimal("0.000374936654885881"),
-                "network": "mainnet",
-                "contract_address": (
-                    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-                ),
-            },
-        ]
+        wallet_address = "0x42e02FB5aF30aa379314371ADa1e3035967B569B"
+
+        holdings = get_token_holdings(wallet_address)
+
+        print("\n--- Holdings ---")
+        for holding in holdings:
+            print(
+                holding["symbol"],
+                holding["amount"],
+                holding["contract_address"],
+            )
             
         all_markets = []
 
