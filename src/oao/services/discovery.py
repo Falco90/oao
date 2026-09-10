@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 
+from oao.services.recommendation import generate_recommendation
+
 load_dotenv()
 
 from decimal import Decimal
@@ -425,7 +427,8 @@ if __name__ == "__main__":
     from decimal import Decimal
 
     async def main():
-        wallet_address = "0xad4010aC206b14D66999b4BF9b80C6bc97B60b9A"
+        # wallet_address = "0xad4010aC206b14D66999b4BF9b80C6bc97B60b9A"
+        wallet_address = "0x42e02FB5aF30aa379314371ADa1e3035967B569B"
 
         holdings = get_token_holdings(
             wallet_address
@@ -439,19 +442,27 @@ if __name__ == "__main__":
                 holding["contract_address"],
             )
 
-        best_markets = await discover_wallet_markets(
+        opportunities = await discover_wallet_markets(
             holdings
         )
 
         print("\n--- Best Markets ---")
-        for symbol, market in best_markets.items():
+        for opportunity in opportunities:
             print(
-                symbol,
-                market["protocol"],
-                market["subgraph_name"],
-                market["supply_rate"],
-                market["tvl_usd"],
+                opportunity["symbol"],
+                opportunity["protocol"],
+                opportunity["subgraph_name"],
+                opportunity["supply_rate"],
+                opportunity["tvl_usd"],
             )
+            
+        recommendation = await generate_recommendation(
+            holdings,
+            opportunities,
+        )
+
+        print("\n--- Recommendation ---")
+        print(recommendation.model_dump())
 
 
 if __name__ == "__main__":
