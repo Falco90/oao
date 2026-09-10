@@ -2,10 +2,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from decimal import Decimal
 from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
 from oao.state import TokenHolding
-from oao.services.the_graph_mcp import search_subgraphs, get_subgraph_schema, get_deployment_query_counts
+from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 
 async def discover_protocols(
     holdings: list[TokenHolding],
@@ -148,70 +149,152 @@ def attach_query_counts(
     return candidates
 
 
+def get_lender_variable_rate(market: dict) -> Decimal | None:
+    for rate in market["rates"]:
+        if (
+            rate["side"] == "LENDER"
+            and rate["type"] == "VARIABLE"
+        ):
+            return Decimal(rate["rate"])
+
+    return None
+
+
+def normalize_discovered_market(
+    protocol: str,
+    subgraph_name: str,
+    market: dict,
+) -> dict:
+    return {
+        "protocol": protocol,
+        "subgraph_name": subgraph_name,
+        "symbol": market["inputToken"]["symbol"],
+        "asset_address": market["inputToken"]["id"],
+        "market_id": market["id"],
+        "tvl_usd": Decimal(market["totalValueLockedUSD"]),
+        "supply_rate": get_lender_variable_rate(market),
+        "is_active": market["isActive"],
+    }
+    
+
+def select_best_markets(
+    eligible_markets: list[dict],
+) -> dict[str, dict]:
+    best_markets = {}
+
+    for market in eligible_markets:
+        symbol = market["symbol"]
+        current_best = best_markets.get(symbol)
+
+        if (
+            current_best is None
+            or market["supply_rate"] > current_best["supply_rate"]
+        ):
+            best_markets[symbol] = market
+
+    return best_markets
+
+
 if __name__ == "__main__":
     import asyncio
     from decimal import Decimal
     from pprint import pprint
 
     async def main():
-        holdings: list[TokenHolding] = [
-            {
-                "symbol": "USDC",
-                "amount": Decimal("100"),
-                "network": "mainnet",
-                "contract_address": (
-                    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-                ),
-            },
-            {
-                "symbol": "WETH",
-                "amount": Decimal("1"),
-                "network": "mainnet",
-                "contract_address": (
-                    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-                ),
-            },
+        keywords = [
+            "Aave",
+            "Aave V3",
         ]
-        
 
-        result = await discover_protocols(holdings)
-        
-        protocol = result.protocols[0]
-        
-        search_result = await search_subgraphs(
-            protocol
-        )
+        all_subgraphs = []
 
+        for keyword in keywords:
+            result = await search_subgraphs(keyword)
+            all_subgraphs.extend(result["subgraphs"])
+
+        unique_subgraphs = {
+            subgraph["id"]: subgraph
+            for subgraph in all_subgraphs
+        }.values()
+
+        merged_result = {
+            "subgraphs": list(unique_subgraphs)
+        }
+        
         candidates = build_subgraph_candidates(
-            protocol,
-            search_result,
+            "Aave",
+            merged_result,
         )
 
         ethereum_candidates = filter_ethereum_candidates(
-            protocol,
+            "Aave",
             candidates,
         )
 
         validated_candidates = await validate_subgraph_candidates(
-            protocol,
+            "Aave",
             ethereum_candidates,
         )
 
-        ipfs_hashes = [
-            candidate.ipfs_hash
-            for candidate in validated_candidates
-        ]
+        query = """
+        {
+            markets(first: 50) {
+                id
+                name
+                isActive
+                totalValueLockedUSD
+                inputToken {
+                    id
+                    symbol
+                }
+                rates {
+                    rate
+                    side
+                    type
+                }
+            }
+        }
+        """
 
-        query_counts = await get_deployment_query_counts(
-            ipfs_hashes
-        )
-        
-        validated_candidates = attach_query_counts(
-            validated_candidates,
-            query_counts,
-        )
+        normalized_markets = []
 
         for candidate in validated_candidates:
-            print(candidate)
+            result = await execute_subgraph_query(
+                candidate.subgraph_id,
+                query,
+            )
 
-    asyncio.run(main())
+            for market in result["data"]["markets"]:
+                if market["inputToken"]["symbol"] not in {
+                    "USDC",
+                    "USDT",
+                    "WETH",
+                }:
+                    continue
+
+                normalized_markets.append(
+                    normalize_discovered_market(
+                    protocol=candidate.protocol,
+                    subgraph_name=candidate.display_name,
+                    market=market,
+                    )
+                )
+        eligible_markets = [
+           market
+            for market in normalized_markets
+            if market["is_active"]
+            and market["supply_rate"] is not None
+        ]
+        
+        best_markets = select_best_markets(eligible_markets)
+
+        for symbol, market in best_markets.items():
+            print(
+            symbol,
+            market["subgraph_name"],
+            market["supply_rate"],
+            market["tvl_usd"],
+        )
+
+            
+asyncio.run(main())

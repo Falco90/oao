@@ -76,3 +76,28 @@ async def get_deployment_query_counts(
             )
 
             return json.loads(result.content[0].text)
+        
+        
+async def execute_subgraph_query(
+    subgraph_id: str,
+    query: str,
+) -> dict:
+    api_key = os.environ["THE_GRAPH_GATEWAY_API_KEY"]
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    async with sse_client(
+        MCP_URL,
+        headers=headers,
+    ) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            result = await session.call_tool(
+                "execute_query_by_subgraph_id",
+                arguments={
+                    "subgraph_id": subgraph_id,
+                    "query": query,
+                },
+            )
+
+            return json.loads(result.content[0].text)
