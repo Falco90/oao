@@ -377,16 +377,58 @@ def match_markets_to_holdings(
         in holding_addresses
     ]
     
+async def discover_wallet_markets(
+    holdings: list[TokenHolding],
+) -> dict[str, dict]:
+    protocol_discovery = await discover_protocols(
+        holdings
+    )
+
+    all_markets = []
+
+    for protocol in protocol_discovery.protocols:
+        print(f"\n--- Discovering {protocol} ---")
+
+        try:
+            markets = await discover_protocol_markets(
+                protocol
+            )
+        except Exception as exc:
+            print(
+                f"{protocol}: discovery failed: {exc}"
+            )
+            continue
+
+        print(
+            f"{protocol}: {len(markets)} markets"
+        )
+
+        all_markets.extend(markets)
+
+    eligible_markets = filter_eligible_markets(
+        all_markets
+    )
+
+    matched_markets = match_markets_to_holdings(
+        eligible_markets,
+        holdings,
+    )
+
+    return select_best_markets(
+        matched_markets
+    )
+    
     
 if __name__ == "__main__":
     import asyncio
     from decimal import Decimal
-    from pprint import pprint
 
     async def main():
         wallet_address = "0xad4010aC206b14D66999b4BF9b80C6bc97B60b9A"
 
-        holdings = get_token_holdings(wallet_address)
+        holdings = get_token_holdings(
+            wallet_address
+        )
 
         print("\n--- Holdings ---")
         for holding in holdings:
@@ -395,68 +437,12 @@ if __name__ == "__main__":
                 holding["amount"],
                 holding["contract_address"],
             )
-            
-        print("\n--- Holding Market Addresses ---")
-        for holding in holdings:
-            print(
-                holding["symbol"],
-                get_holding_market_address(holding),
-        )
-            
-        protocol_discovery = await discover_protocols(
+
+        best_markets = await discover_wallet_markets(
             holdings
         )
 
-        print("\n--- Discovered Protocols ---")
-        for protocol in protocol_discovery.protocols:
-            print(protocol)
-
-        all_markets = []
-
-        for protocol in protocol_discovery.protocols:
-            print(f"\n--- Discovering {protocol} ---")
-
-            try:
-                markets = await discover_protocol_markets(
-                    protocol
-                )
-            except Exception as exc:
-                print(
-                    f"{protocol}: discovery failed: {exc}"
-                )
-                continue
-
-            print(
-                f"{protocol}: {len(markets)} markets"
-            )
-
-            all_markets.extend(markets)
-
-        eligible_markets = filter_eligible_markets(
-            all_markets
-        )
-        
-        matched_markets = match_markets_to_holdings(
-            eligible_markets,
-            holdings,
-        )
-
-        print("\n--- Matched Markets ---")
-        for market in matched_markets:
-            print(
-                market["symbol"],
-                market["protocol"],
-                market["subgraph_name"],
-                market["supply_rate"],
-                market["tvl_usd"],
-            )
-
-        best_markets = select_best_markets(
-            matched_markets
-        )
-        
         print("\n--- Best Markets ---")
-
         for symbol, market in best_markets.items():
             print(
                 symbol,
@@ -465,5 +451,7 @@ if __name__ == "__main__":
                 market["supply_rate"],
                 market["tvl_usd"],
             )
-            
-asyncio.run(main())
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
