@@ -35,6 +35,9 @@ async def generate_recommendation(
     - Do not say that unselected protocols or markets were not considered.
     You may say that the supplied opportunities are the final selected
     opportunities from the analysis.
+    -- If an opportunity is marked active, describe it only as being
+    reported as active in the supplied market data. Do not claim that
+    deposits are guaranteed to be available at this moment.
     """
 
     return await structured_model.ainvoke(prompt)
