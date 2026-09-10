@@ -9,6 +9,24 @@ from oao.state import TokenHolding
 from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 from oao.services.wallet import get_token_holdings
 
+WETH_MAINNET = (
+    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+)
+
+
+def get_holding_market_address(
+    holding: TokenHolding,
+) -> str | None:
+    if (
+        holding["network"] == "mainnet"
+        and holding["symbol"] == "ETH"
+        and holding["contract_address"] is None
+    ):
+        return WETH_MAINNET
+
+    return holding["contract_address"]
+
+
 def build_market_query(
     first: int,
     skip: int,
@@ -331,9 +349,13 @@ def match_markets_to_holdings(
     holdings: list[TokenHolding],
 ) -> list[dict]:
     holding_addresses = {
-        holding["contract_address"].lower()
+        address.lower()
         for holding in holdings
-        if holding["contract_address"] is not None
+        if (
+            address := get_holding_market_address(
+                holding
+            )
+        )
     }
 
     return [
@@ -343,7 +365,7 @@ def match_markets_to_holdings(
         in holding_addresses
     ]
     
-
+    
 if __name__ == "__main__":
     import asyncio
     from decimal import Decimal
