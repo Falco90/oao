@@ -14,3 +14,4 @@ class SubgraphCandidate(BaseModel):
     subgraph_id: str
     ipfs_hash: str
     display_name: str
+    query_count_30d: int | None = None

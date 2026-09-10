@@ -5,7 +5,7 @@ load_dotenv()
 from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
 from oao.state import TokenHolding
-from oao.services.the_graph_mcp import search_subgraphs, get_subgraph_schema
+from oao.services.the_graph_mcp import search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 
 async def discover_protocols(
     holdings: list[TokenHolding],
@@ -86,6 +86,7 @@ def filter_ethereum_candidates(
 
     return filtered
 
+
 def is_lending_schema(schema: str) -> bool:
     required_markers = [
         "type Market",
@@ -96,6 +97,56 @@ def is_lending_schema(schema: str) -> bool:
     ]
 
     return all(marker in schema for marker in required_markers)
+
+
+def matches_protocol_identity(
+    protocol: str,
+    candidate: SubgraphCandidate,
+) -> bool:
+    name = candidate.display_name.lower()
+    protocol_name = protocol.lower()
+
+    return name.startswith(protocol_name)
+
+
+async def validate_subgraph_candidates(
+    protocol: str,
+    candidates: list[SubgraphCandidate],
+) -> list[SubgraphCandidate]:
+    validated = []
+
+    for candidate in candidates:
+        if not matches_protocol_identity(protocol, candidate):
+            continue
+
+        schema = await get_subgraph_schema(
+            candidate.subgraph_id
+        )
+
+        if not is_lending_schema(schema):
+            continue
+
+        validated.append(candidate)
+
+    return validated
+
+
+def attach_query_counts(
+    candidates: list[SubgraphCandidate],
+    query_counts: dict,
+) -> list[SubgraphCandidate]:
+    counts_by_ipfs = {
+        deployment["ipfs_hash"]: deployment["total_query_count"]
+        for deployment in query_counts["deployments"]
+    }
+
+    for candidate in candidates:
+        candidate.query_count_30d = counts_by_ipfs.get(
+            candidate.ipfs_hash
+        )
+
+    return candidates
+
 
 if __name__ == "__main__":
     import asyncio
@@ -141,15 +192,26 @@ if __name__ == "__main__":
             candidates,
         )
 
-        for candidate in ethereum_candidates:
-            schema = await get_subgraph_schema(
-            candidate.subgraph_id
-            )
+        validated_candidates = await validate_subgraph_candidates(
+            protocol,
+            ethereum_candidates,
+        )
 
-            print(
-                candidate.display_name,
-                is_lending_schema(schema),
-            )
+        ipfs_hashes = [
+            candidate.ipfs_hash
+            for candidate in validated_candidates
+        ]
 
+        query_counts = await get_deployment_query_counts(
+            ipfs_hashes
+        )
+        
+        validated_candidates = attach_query_counts(
+            validated_candidates,
+            query_counts,
+        )
+
+        for candidate in validated_candidates:
+            print(candidate)
 
     asyncio.run(main())
