@@ -325,12 +325,49 @@ def select_best_markets(
     return best_markets
 
 
+def match_markets_to_holdings(
+    markets: list[dict],
+    holdings: list[TokenHolding],
+) -> list[dict]:
+    holding_addresses = {
+        holding["contract_address"].lower()
+        for holding in holdings
+        if holding["contract_address"] is not None
+    }
+
+    return [
+        market
+        for market in markets
+        if market["asset_address"].lower()
+        in holding_addresses
+    ]
+    
+
 if __name__ == "__main__":
     import asyncio
     from decimal import Decimal
     from pprint import pprint
 
     async def main():
+        holdings: list[TokenHolding] = [
+            {
+                "symbol": "USDC",
+                "amount": Decimal("0.0001"),
+                "network": "mainnet",
+                "contract_address": (
+                    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+                ),
+            },
+            {
+                "symbol": "WETH",
+                "amount": Decimal("0.000374936654885881"),
+                "network": "mainnet",
+                "contract_address": (
+                    "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+                ),
+            },
+        ]
+            
         all_markets = []
 
         for protocol in [
@@ -343,9 +380,14 @@ if __name__ == "__main__":
         eligible_markets = filter_eligible_markets(
             all_markets
         )
+        
+        matched_markets = match_markets_to_holdings(
+            eligible_markets,
+            holdings,
+        )
 
         best_markets = select_best_markets(
-            eligible_markets
+            matched_markets
         )
 
         for symbol, market in best_markets.items():
