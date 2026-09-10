@@ -8,25 +8,30 @@ from oao.models.llm import model
 from oao.state import TokenHolding
 from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 
-MARKET_QUERY = """
-{
-  markets(first: 50) {
-    id
-    name
-    isActive
-    totalValueLockedUSD
-    inputToken {
-      id
-      symbol
-    }
-    rates {
-      rate
-      side
-      type
-    }
-  }
-}
-"""
+def build_market_query(
+    first: int,
+    skip: int,
+) -> str:
+    return f"""
+    {{
+      markets(first: {first}, skip: {skip}) {{
+        id
+        name
+        isActive
+        totalValueLockedUSD
+        inputToken {{
+          id
+          symbol
+        }}
+        rates {{
+          rate
+          side
+          type
+        }}
+      }}
+    }}
+    """
+    
 
 async def discover_protocols(
     holdings: list[TokenHolding],
@@ -99,12 +104,11 @@ async def discover_protocol_markets(
     normalized_markets = []
 
     for candidate in validated_candidates:
-        result = await execute_subgraph_query(
-            candidate.subgraph_id,
-            MARKET_QUERY,
+        markets = await fetch_all_markets(
+            candidate.subgraph_id
         )
 
-        for market in result["data"]["markets"]:
+        for market in markets:
             if market["inputToken"]["symbol"] not in {
                 "USDC",
                 "USDT",
@@ -150,6 +154,36 @@ def build_subgraph_candidates(
         )
 
     return candidates
+
+
+async def fetch_all_markets(
+    subgraph_id: str,
+) -> list[dict]:
+    markets = []
+    page_size = 100
+    skip = 0
+
+    while True:
+        query = build_market_query(
+            first=page_size,
+            skip=skip,
+        )
+
+        result = await execute_subgraph_query(
+            subgraph_id,
+            query,
+        )
+
+        page = result["data"]["markets"]
+
+        if not page:
+            break
+
+        markets.extend(page)
+        skip += page_size
+
+    return markets
+
 
 def filter_ethereum_candidates(
     protocol: str,
@@ -319,26 +353,25 @@ if __name__ == "__main__":
         normalized_markets = []
 
         for candidate in validated_candidates:
-            result = await execute_subgraph_query(
-                candidate.subgraph_id,
-                MARKET_QUERY,
+            markets = await fetch_all_markets(
+                candidate.subgraph_id
             )
 
-        for market in result["data"]["markets"]:
-            if market["inputToken"]["symbol"] not in {
-                "USDC",
-                "USDT",
-                "WETH",
-            }:
-                continue
+            for market in markets:
+                if market["inputToken"]["symbol"] not in {
+                    "USDC",
+                    "USDT",
+                    "WETH",
+                }:
+                    continue
 
-            normalized_markets.append(
-                normalize_discovered_market(
-                    protocol=candidate.protocol,
-                    subgraph_name=candidate.display_name,
-                    market=market,
+                normalized_markets.append(
+                    normalize_discovered_market(
+                        protocol=candidate.protocol,
+                        subgraph_name=candidate.display_name,
+                        market=market,
+                    )
                 )
-            )
 
         eligible_markets = filter_eligible_markets(
             normalized_markets
@@ -351,6 +384,5 @@ if __name__ == "__main__":
                 market["supply_rate"],
                 market["tvl_usd"],
             )
-
             
 asyncio.run(main())
