@@ -5,7 +5,8 @@ load_dotenv()
 from decimal import Decimal
 from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
-from oao.state import TokenHolding
+from oao.state import Opportunity, TokenHolding
+from oao.services.optimizer import optimize_opportunities
 from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 from oao.services.wallet import get_token_holdings
 
@@ -379,7 +380,7 @@ def match_markets_to_holdings(
     
 async def discover_wallet_markets(
     holdings: list[TokenHolding],
-) -> dict[str, dict]:
+) -> list[Opportunity]:
     protocol_discovery = await discover_protocols(
         holdings
     )
@@ -414,7 +415,7 @@ async def discover_wallet_markets(
         holdings,
     )
 
-    return select_best_markets(
+    return optimize_opportunities(
         matched_markets
     )
     
