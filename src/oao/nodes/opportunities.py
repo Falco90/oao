@@ -4,7 +4,8 @@ from oao.state import AgentState
 
 async def discover_opportunities(state: AgentState) -> dict:
     opportunities, protocol_analyses, selection_analyses = await discover_wallet_markets(
-        state["holdings"]
+        state["holdings"],
+        state["protocols"]
     )
     
     return {

@@ -25,6 +25,7 @@ class Opportunity(TypedDict):
 class AgentState(TypedDict):
     wallet_address: str
     holdings: list[TokenHolding]
+    protocols: list[str]
     opportunities: list[Opportunity]
     protocol_analyses: list[ProtocolAnalysis]
     selection_analyses: list[SelectionAnalysis]

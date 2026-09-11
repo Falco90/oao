@@ -392,36 +392,29 @@ def match_markets_to_holdings(
     
 async def discover_wallet_markets(
     holdings: list[TokenHolding],
-) -> tuple[list[Opportunity], list[ProtocolAnalysis], list[SelectionAnalysis]]:
-    protocol_discovery = await discover_protocols(
-        holdings
-    )
-
+    protocols: list[str],
+) -> tuple[
+    list[Opportunity],
+    list[ProtocolAnalysis],
+    list[SelectionAnalysis],
+]:
     all_markets = []
-    
-    protocol_analyses: list[ProtocolAnalysis] = []
-    
-    for protocol in protocol_discovery.protocols:
-        print(f"\n--- Discovering {protocol} ---")
+    protocol_analyses = []
 
+    for protocol in protocols:
         try:
             markets, analysis = await discover_protocol_markets(
                 protocol
             )
-            
-            protocol_analyses.append(analysis)
         except Exception as exc:
             print(
                 f"{protocol}: discovery failed: {exc}"
             )
             continue
 
-        print(
-            f"{protocol}: {len(markets)} markets"
-        )
-
         all_markets.extend(markets)
-
+        protocol_analyses.append(analysis)
+    
     eligible_markets = filter_eligible_markets(
         all_markets
     )
