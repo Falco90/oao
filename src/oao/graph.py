@@ -21,3 +21,5 @@ def build_graph():
     graph.add_edge("recommend", END)
     
     return graph.compile()
+
+graph = build_graph()
