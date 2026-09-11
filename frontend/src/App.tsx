@@ -10,27 +10,47 @@ import './App.css'
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const isValidWalletAddress =
     /^0x[a-fA-F0-9]{40}$/.test(walletAddress)
 
   async function handleAnalyze() {
-    const response = await fetch(
-      'http://127.0.0.1:8000/analyze',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    setIsLoading(true)
+    setError(null)
+    setAnalysis(null)
+
+    try {
+      const response = await fetch(
+        'http://127.0.0.1:8000/analyze',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            wallet_address: walletAddress,
+          }),
         },
-        body: JSON.stringify({
-          wallet_address: walletAddress,
-        }),
-      },
-    )
+      )
 
-    const data: AnalyzeResponse = await response.json()
+      if (!response.ok) {
+        throw new Error('Analysis failed')
+      }
 
-    setAnalysis(data)
+      const data: AnalyzeResponse = await response.json()
+
+      setAnalysis(data)
+    } catch (error) {
+      console.error(error)
+
+      setError(
+        'Unable to analyze this wallet. Please try again.',
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -52,6 +72,7 @@ function App() {
             type="text"
             placeholder="0x wallet address..."
             value={walletAddress}
+            disabled={isLoading}
             onChange={(event) => {
               setWalletAddress(event.target.value)
             }}
@@ -60,12 +81,25 @@ function App() {
           <button
             className="analyze-button"
             type="button"
-            disabled={!isValidWalletAddress}
+            disabled={!isValidWalletAddress || isLoading}
             onClick={handleAnalyze}
           >
-            Analyze
+            {isLoading ? 'Analyzing...' : 'Analyze'}
           </button>
         </div>
+
+        {isLoading && (
+          <p className="status-message">
+            Analyzing wallet...
+          </p>
+        )}
+
+        {error && (
+          <p className="error-message">
+            {error}
+          </p>
+        )}
+
         {analysis && (
           <div className="analysis-results">
             <section className="result-section">
