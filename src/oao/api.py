@@ -8,10 +8,10 @@ from fastapi.encoders import jsonable_encoder
 
 from oao.graph import graph
 from oao.models.api import (
-    AnalyzeRequest,
     AnalyzeResponse,
     HoldingResponse,
     OpportunityResponse,
+    WalletAddress
 )
 
 PROGRESS_MESSAGES = {
@@ -34,31 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    try:
-        result = await graph.ainvoke(
-            {
-                "wallet_address": request.wallet_address,
-            }
-        )
-    except Exception as exc:
-        print(f"Analysis failed: {exc}")
-
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                "Analysis failed because an upstream "
-                "service was unavailable."
-            ),
-        ) from exc
-
-    return build_analyze_response(result)
-
     
-@app.get("/analyze/stream")
-async def analyze_stream(wallet_address: str):
+@app.get("/analyze")
+async def analyze_stream(wallet_address: WalletAddress):
     async def event_stream():
         final_state = {
             "wallet_address": wallet_address,

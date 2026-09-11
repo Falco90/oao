@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 from oao.models.analysis import (
     ProtocolAnalysis,
@@ -6,30 +6,19 @@ from oao.models.analysis import (
 )
 from oao.models.recommendation import Recommendation
 
+from typing import Annotated
 
-class AnalyzeRequest(BaseModel):
-    wallet_address: str
+from fastapi import Query
 
-    @field_validator("wallet_address")
-    @classmethod
-    def validate_wallet_address(cls, value: str) -> str:
-        if (
-            not value.startswith("0x")
-            or len(value) != 42
-        ):
-            raise ValueError(
-                "Invalid Ethereum wallet address"
-            )
 
-        try:
-            int(value[2:], 16)
-        except ValueError:
-            raise ValueError(
-                "Invalid Ethereum wallet address"
-            )
+WalletAddress = Annotated[
+    str,
+    Query(
+        pattern=r"^0x[a-fA-F0-9]{40}$",
+        description="Ethereum wallet address",
+    ),
+]
 
-        return value
-    
     
 class HoldingResponse(BaseModel):
     symbol: str
