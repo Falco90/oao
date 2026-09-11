@@ -1,7 +1,7 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 
-from oao.graph import build_graph
+
+from oao.graph import graph
 from oao.models.api import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -15,13 +15,22 @@ app = FastAPI()
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    graph = build_graph()
-    
-    result = await graph.ainvoke(
-        {
-            "wallet_address": request.wallet_address,
-        }
-    )
+    try:
+        result = await graph.ainvoke(
+            {
+                "wallet_address": request.wallet_address,
+            }
+        )
+    except Exception as exc:
+        print(f"Analysis failed: {exc}")
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Analysis failed because an upstream "
+                "service was unavailable."
+            ),
+        ) from exc
 
     return AnalyzeResponse(
         wallet_address=result["wallet_address"],
