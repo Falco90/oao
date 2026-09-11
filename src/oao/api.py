@@ -41,56 +41,55 @@ async def analyze_stream(wallet_address: WalletAddress):
             "wallet_address": wallet_address,
         }
         
-        async for update in graph.astream(
+        async for mode, payload in graph.astream(
             {
                 "wallet_address": wallet_address,
             },
-            stream_mode="updates",
+            stream_mode=["updates", "custom"],
         ):
-            for node_name, node_output in update.items():
-                final_state.update(node_output)
+            print(mode, payload)
+            if mode == "updates":
+                for node_name, node_output in payload.items():
+                    final_state.update(node_output)
 
-                event = {
-                    "type": "progress",
-                    "stage": node_name,
-                    "message": PROGRESS_MESSAGES.get(
-                        node_name,
-                        node_name,
-                    ),
-                }
+                    event = {
+                        "type": "progress",
+                        "stage": node_name,
+                        "message": PROGRESS_MESSAGES.get(
+                            node_name,
+                            node_name,
+                        ),
+                    }
+
+                    if node_name == "analyze_wallet":
+                        event["data"] = {
+                            "holdings": [
+                                {
+                                    "symbol": holding["symbol"],
+                                    "amount": str(holding["amount"]),
+                                    "network": holding["network"],
+                                    "contract_address": holding[
+                                        "contract_address"
+                                    ],
+                                }
+                                for holding in node_output["holdings"]
+                            ],
+                        }
+
+                    if node_name == "discover_protocol_candidates":
+                        event["data"] = {
+                            "protocols": node_output["protocols"],
+                        }
+
+                    yield (
+                        f"data: {json.dumps(jsonable_encoder(event))}\n\n"
+                    )
+
+            elif mode == "custom":
+                yield (
+                    f"data: {json.dumps(jsonable_encoder(payload))}\n\n"
+                )
                 
-                if node_name == "analyze_wallet":
-                    event["data"] = {
-                        "holdings": [
-                            {
-                                "symbol": holding["symbol"],
-                                "amount": str(holding["amount"]),
-                                "network": holding["network"],
-                                "contract_address": holding[
-                                    "contract_address"
-                                ],
-                            }
-                            for holding in node_output["holdings"]
-                        ]
-                    }
-                    
-                if node_name == "discover_protocol_candidates":
-                    event["data"] = {
-                        "protocols": node_output["protocols"],
-                    }
-                    
-                if node_name == "discover_opportunities":
-                    event["data"] = {
-                        "protocol_analyses": [
-                            analysis.model_dump()
-                            for analysis in node_output[
-                                "protocol_analyses"
-                            ]
-                        ],
-                    }
-
-                yield f"data: {json.dumps(event)}\n\n"
-
         response = build_analyze_response(final_state)
 
         complete_event = {
@@ -99,7 +98,7 @@ async def analyze_stream(wallet_address: WalletAddress):
         }
 
         yield (
-            f"data: {json.dumps(complete_event)}\n\n"
+            f"data: {json.dumps(jsonable_encoder(complete_event))}\n\n"
         )
         
     return StreamingResponse(

@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from langgraph.types import StreamWriter
 
 from oao.models.analysis import ProtocolAnalysis, SelectionAnalysis
 from oao.services.recommendation import generate_recommendation
@@ -393,6 +394,7 @@ def match_markets_to_holdings(
 async def discover_wallet_markets(
     holdings: list[TokenHolding],
     protocols: list[str],
+    writer: StreamWriter
 ) -> tuple[
     list[Opportunity],
     list[ProtocolAnalysis],
@@ -401,6 +403,13 @@ async def discover_wallet_markets(
     protocol_analyses = []
 
     for protocol in protocols:
+        writer(
+            {
+                "type": "protocol_started",
+                "protocol": protocol,
+            }
+        )
+        
         try:
             markets, analysis = await discover_protocol_markets(
                 protocol
@@ -413,6 +422,14 @@ async def discover_wallet_markets(
 
         all_markets.extend(markets)
         protocol_analyses.append(analysis)
+        
+        writer(
+            {
+                "type": "protocol_completed",
+                "protocol": protocol,
+                "analysis": analysis.model_dump(),
+            }
+        )
     
     eligible_markets = filter_eligible_markets(
         all_markets
