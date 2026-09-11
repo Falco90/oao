@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-
+from fastapi.middleware.cors import CORSMiddleware
 
 from oao.graph import graph
 from oao.models.api import (
@@ -11,6 +11,16 @@ from oao.models.api import (
 
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
