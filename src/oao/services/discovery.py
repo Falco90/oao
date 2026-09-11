@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 
+from oao.models.analysis import ProtocolAnalysis
 from oao.services.recommendation import generate_recommendation
 
 load_dotenv()
@@ -88,7 +89,7 @@ async def discover_protocols(
 
 async def discover_protocol_markets(
     protocol: str,
-) -> list[dict]:
+) -> tuple[list[dict], ProtocolAnalysis]:
     keywords = [
         protocol,
         f"{protocol} V3",
@@ -156,7 +157,16 @@ async def discover_protocol_markets(
                 )
             )
 
-    return normalized_markets
+    analysis = ProtocolAnalysis(
+        protocol=protocol,
+        validated_subgraphs=[
+            candidate.display_name
+            for candidate in validated_candidates
+        ],
+        market_count=len(normalized_markets),
+    )
+    
+    return normalized_markets, analysis
 
 
 def build_subgraph_candidates(
@@ -382,20 +392,24 @@ def match_markets_to_holdings(
     
 async def discover_wallet_markets(
     holdings: list[TokenHolding],
-) -> list[Opportunity]:
+) -> tuple[list[Opportunity], list[ProtocolAnalysis]]:
     protocol_discovery = await discover_protocols(
         holdings
     )
 
     all_markets = []
-
+    
+    protocol_analyses: list[ProtocolAnalysis] = []
+    
     for protocol in protocol_discovery.protocols:
         print(f"\n--- Discovering {protocol} ---")
 
         try:
-            markets = await discover_protocol_markets(
+            markets, analysis = await discover_protocol_markets(
                 protocol
             )
+            
+            protocol_analyses.append(analysis)
         except Exception as exc:
             print(
                 f"{protocol}: discovery failed: {exc}"
@@ -416,10 +430,12 @@ async def discover_wallet_markets(
         eligible_markets,
         holdings,
     )
-
-    return optimize_opportunities(
+    
+    opportunities = optimize_opportunities(
         matched_markets
     )
+
+    return opportunities, protocol_analyses
     
     
 if __name__ == "__main__":
