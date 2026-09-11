@@ -67,6 +67,98 @@
   cursor: not-allowed;
 }
 
+.analysis-results {
+  margin-top: 4rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.result-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.result-section h2 {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  font-size: 1.25rem;
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.result-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(240px, 1fr)
+  );
+  gap: 1rem;
+}
+
+.opportunity-card,
+.selection-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+}
+
+.opportunity-card h3,
+.selection-card h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.opportunity-card p,
+.selection-card p {
+  margin: 0.5rem 0;
+  color: #4b5563;
+}
+
+.selection-reason {
+  margin-top: 1rem !important;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  color: #111827 !important;
+}
+
+.recommendation-summary {
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.recommendation-card ul {
+  margin: 1.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.recommendation-card li {
+  margin-bottom: 0.9rem;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
 @media (max-width: 600px) {
   .app {
     padding-top: 5rem;
