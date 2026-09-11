@@ -396,7 +396,6 @@ async def discover_wallet_markets(
 ) -> tuple[
     list[Opportunity],
     list[ProtocolAnalysis],
-    list[SelectionAnalysis],
 ]:
     all_markets = []
     protocol_analyses = []
@@ -423,12 +422,8 @@ async def discover_wallet_markets(
         eligible_markets,
         holdings,
     )
-    
-    opportunities, selection_analyses = optimize_opportunities(
-        matched_markets
-    )
 
-    return opportunities, protocol_analyses, selection_analyses
+    return matched_markets, protocol_analyses
     
     
 if __name__ == "__main__":
