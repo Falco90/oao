@@ -37,10 +37,26 @@ def test_optimizer_prefers_liquidity_within_rate_tolerance():
         },
     ]
 
-    result = optimize_opportunities(opportunities)
+    result, analyses = optimize_opportunities(
+        opportunities
+    )
 
     assert len(result) == 1
     assert result[0]["protocol"] == "Protocol B"
+
+    assert len(analyses) == 1
+
+    analysis = analyses[0]
+
+    assert analysis.symbol == "USDC"
+    assert analysis.selected_protocol == "Protocol B"
+    assert analysis.selected_subgraph == "B Ethereum"
+    assert analysis.best_rate == Decimal("5.10")
+    assert analysis.selected_rate == Decimal("5.02")
+    assert analysis.selected_tvl_usd == Decimal(
+        "400000000"
+    )
+    assert analysis.competitive_market_count == 2
     
 
 def test_optimizer_prefers_higher_rate_outside_tolerance():
@@ -67,7 +83,23 @@ def test_optimizer_prefers_higher_rate_outside_tolerance():
         },
     ]
 
-    result = optimize_opportunities(opportunities)
+    result, analyses = optimize_opportunities(
+        opportunities
+    )
 
     assert len(result) == 1
     assert result[0]["protocol"] == "Protocol A"
+
+    assert len(analyses) == 1
+
+    analysis = analyses[0]
+
+    assert analysis.symbol == "USDC"
+    assert analysis.selected_protocol == "Protocol A"
+    assert analysis.selected_subgraph == "A Ethereum"
+    assert analysis.best_rate == Decimal("5.10")
+    assert analysis.selected_rate == Decimal("5.10")
+    assert analysis.selected_tvl_usd == Decimal(
+        "2000000"
+    )
+    assert analysis.competitive_market_count == 1
