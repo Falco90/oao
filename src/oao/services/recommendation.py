@@ -38,6 +38,11 @@ async def generate_recommendation(
     -- If an opportunity is marked active, describe it only as being
     reported as active in the supplied market data. Do not claim that
     deposits are guaranteed to be available at this moment.
+    - Do not say that no other protocols or markets were evaluated,
+    considered, or analyzed.
+    - The supplied opportunities are only the final selected opportunities.
+    - You do not know the full set of protocols or markets that were
+    considered unless that information is explicitly supplied.
     """
 
     return await structured_model.ainvoke(prompt)
