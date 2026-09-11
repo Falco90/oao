@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from oao.graph import build_graph
 from oao.models.api import (
+    AnalyzeRequest,
     AnalyzeResponse,
     HoldingResponse,
     OpportunityResponse,
@@ -10,10 +11,6 @@ from oao.models.api import (
 
 
 app = FastAPI()
-
-
-class AnalyzeRequest(BaseModel):
-    wallet_address: str
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
