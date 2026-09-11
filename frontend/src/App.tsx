@@ -1,88 +1,113 @@
 import { useState } from 'react'
+
+import './App.css'
+
 import type { AnalyzeResponse } from './types/api'
+
 import {
   formatRate,
   formatUsd,
   getSelectionReason,
 } from './utils/format'
-import './App.css'
+
+type ProgressEvent = {
+  type: 'progress'
+  stage: string
+  message: string
+}
+
+type CompleteEvent = {
+  type: 'complete'
+  data: AnalyzeResponse
+}
+
+type StreamEvent = ProgressEvent | CompleteEvent
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
-  const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null)
+  const [progressMessage, setProgressMessage] = useState('')
+  const [analysis, setAnalysis] =
+    useState<AnalyzeResponse | null>(null)
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const isValidWalletAddress =
     /^0x[a-fA-F0-9]{40}$/.test(walletAddress)
 
-  async function handleAnalyze() {
+  function handleAnalyze() {
+    if (!isValidWalletAddress) {
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setAnalysis(null)
+    setProgressMessage('Starting analysis...')
 
-    try {
-      const response = await fetch(
-        'http://127.0.0.1:8000/analyze',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            wallet_address: walletAddress,
-          }),
-        },
-      )
+    const url =
+      'http://127.0.0.1:8000/analyze/stream' +
+      `?wallet_address=${encodeURIComponent(walletAddress)}`
 
-      if (!response.ok) {
-        throw new Error('Analysis failed')
+    const stream = new EventSource(url)
+
+    stream.onmessage = (event) => {
+      const message: StreamEvent = JSON.parse(event.data)
+
+      if (message.type === 'progress') {
+        setProgressMessage(message.message)
       }
 
-      const data: AnalyzeResponse = await response.json()
+      if (message.type === 'complete') {
+        setAnalysis(message.data)
+        setIsLoading(false)
+        setProgressMessage('')
+        stream.close()
+      }
+    }
 
-      setAnalysis(data)
-    } catch (error) {
-      console.error(error)
-
+    stream.onerror = () => {
       setError(
         'Unable to analyze this wallet. Please try again.',
       )
-    } finally {
       setIsLoading(false)
+      setProgressMessage('')
+      stream.close()
     }
   }
 
   return (
     <main className="app">
       <section className="hero">
-        <h1 className="title">OAO</h1>
+        <div>
+          <h1>OAO</h1>
+          <p className="subtitle">
+            Onchain portfolio optimizer
+          </p>
 
-        <p className="subtitle">
-          Onchain portfolio optimizer
-        </p>
-
-        <p className="description">
-          Analyze your Ethereum wallet for lending opportunities.
-        </p>
+          <p className="description">
+            Analyze your Ethereum wallet for lending
+            opportunities.
+          </p>
+        </div>
 
         <div className="wallet-form">
           <input
             className="wallet-input"
             type="text"
-            placeholder="0x wallet address..."
             value={walletAddress}
-            disabled={isLoading}
-            onChange={(event) => {
+            onChange={(event) =>
               setWalletAddress(event.target.value)
-            }}
+            }
+            placeholder="0x wallet address"
+            disabled={isLoading}
           />
 
           <button
             className="analyze-button"
             type="button"
-            disabled={!isValidWalletAddress || isLoading}
             onClick={handleAnalyze}
+            disabled={!isValidWalletAddress || isLoading}
           >
             {isLoading ? 'Analyzing...' : 'Analyze'}
           </button>
@@ -90,7 +115,7 @@ function App() {
 
         {isLoading && (
           <p className="status-message">
-            Analyzing wallet...
+            {progressMessage}
           </p>
         )}
 
@@ -109,10 +134,18 @@ function App() {
                 {analysis.holdings.map((holding) => (
                   <div
                     className="result-row"
-                    key={`${holding.symbol}-${holding.contract_address}`}
+                    key={
+                      holding.contract_address ??
+                      holding.symbol
+                    }
                   >
-                    <strong>{holding.symbol}</strong>
-                    <span>{holding.amount}</span>
+                    <span>
+                      {holding.symbol}
+                    </span>
+
+                    <strong>
+                      {holding.amount}
+                    </strong>
                   </div>
                 ))}
               </div>
@@ -122,24 +155,52 @@ function App() {
               <h2>Best opportunities</h2>
 
               <div className="card-grid">
-                {analysis.opportunities.map((opportunity) => (
-                  <article
-                    className="opportunity-card"
-                    key={`${opportunity.protocol}-${opportunity.market_id}`}
-                  >
-                    <h3>
-                      {opportunity.protocol} — {opportunity.symbol}
-                    </h3>
+                {analysis.opportunities.map(
+                  (opportunity) => (
+                    <article
+                      className="opportunity-card"
+                      key={opportunity.market_id}
+                    >
+                      <h3>
+                        {opportunity.protocol}
+                      </h3>
 
-                    <p>
-                      Supply rate: {formatRate(opportunity.supply_rate)}
-                    </p>
+                      <p>
+                        {opportunity.symbol}
+                      </p>
 
-                    <p>
-                      TVL: {formatUsd(opportunity.tvl_usd)}
-                    </p>
-                  </article>
-                ))}
+                      <div className="result-row">
+                        <span>Supply rate</span>
+
+                        <strong>
+                          {formatRate(
+                            opportunity.supply_rate,
+                          )}
+                        </strong>
+                      </div>
+
+                      <div className="result-row">
+                        <span>TVL</span>
+
+                        <strong>
+                          {formatUsd(
+                            opportunity.tvl_usd,
+                          )}
+                        </strong>
+                      </div>
+
+                      <div className="result-row">
+                        <span>Subgraph</span>
+
+                        <strong>
+                          {
+                            opportunity.subgraph_name
+                          }
+                        </strong>
+                      </div>
+                    </article>
+                  ),
+                )}
               </div>
             </section>
 
@@ -147,30 +208,41 @@ function App() {
               <h2>Protocols analyzed</h2>
 
               <div className="card-grid">
-                {analysis.protocol_analyses.map((protocol) => (
-                  <article
-                    className="protocol-card"
-                    key={protocol.protocol}
-                  >
-                    <h3>{protocol.protocol}</h3>
+                {analysis.protocol_analyses.map(
+                  (protocol) => (
+                    <article
+                      className="protocol-card"
+                      key={protocol.protocol}
+                    >
+                      <h3>
+                        {protocol.protocol}
+                      </h3>
 
-                    <p>
-                      Markets found: {protocol.market_count}
-                    </p>
+                      <p>
+                        Markets found:{' '}
+                        {protocol.market_count}
+                      </p>
 
-                    {protocol.validated_subgraphs.length > 0 ? (
-                      <ul>
-                        {protocol.validated_subgraphs.map((subgraph) => (
-                          <li key={subgraph}>
-                            {subgraph}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>No validated Ethereum Subgraphs</p>
-                    )}
-                  </article>
-                ))}
+                      {protocol.validated_subgraphs
+                        .length > 0 ? (
+                        <ul>
+                          {protocol.validated_subgraphs.map(
+                            (subgraph) => (
+                              <li key={subgraph}>
+                                {subgraph}
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      ) : (
+                        <p>
+                          No validated Ethereum
+                          Subgraphs
+                        </p>
+                      )}
+                    </article>
+                  ),
+                )}
               </div>
             </section>
 
@@ -178,46 +250,74 @@ function App() {
               <h2>How this was chosen</h2>
 
               <div className="card-grid">
-                {analysis.selection_analyses.map((selection) => (
-                  <article
-                    className="selection-card"
-                    key={selection.symbol}
-                  >
-                    <h3>
-                      {selection.symbol} → {selection.selected_protocol}
-                    </h3>
+                {analysis.selection_analyses.map(
+                  (selection) => (
+                    <article
+                      className="selection-card"
+                      key={selection.symbol}
+                    >
+                      <h3>
+                        {selection.symbol}
+                      </h3>
 
-                    <p>Market: {selection.selected_subgraph}</p>
+                      <div className="result-row">
+                        <span>
+                          Selected protocol
+                        </span>
 
-                    <p>
-                      Best rate: {formatRate(selection.best_rate)}
-                    </p>
+                        <strong>
+                          {
+                            selection.selected_protocol
+                          }
+                        </strong>
+                      </div>
 
-                    <p>
-                      Selected rate: {formatRate(selection.selected_rate)}
-                    </p>
+                      <div className="result-row">
+                        <span>
+                          Selected rate
+                        </span>
 
-                    <p>
-                      TVL: {formatUsd(selection.selected_tvl_usd)}
-                    </p>
+                        <strong>
+                          {formatRate(
+                            selection.selected_rate,
+                          )}
+                        </strong>
+                      </div>
 
-                    <p>
-                      Competitive markets: {selection.competitive_market_count}
-                    </p>
+                      <div className="result-row">
+                        <span>Best rate</span>
 
-                    <p className="selection-reason">
-                      {getSelectionReason(
-                        selection.best_rate,
-                        selection.selected_rate,
-                        selection.competitive_market_count,
-                      )}
-                    </p>
-                  </article>
-                ))}
+                        <strong>
+                          {formatRate(
+                            selection.best_rate,
+                          )}
+                        </strong>
+                      </div>
+
+                      <div className="result-row">
+                        <span>Selected TVL</span>
+
+                        <strong>
+                          {formatUsd(
+                            selection.selected_tvl_usd,
+                          )}
+                        </strong>
+                      </div>
+
+                      <p className="selection-reason">
+                        {getSelectionReason(
+                          selection.best_rate,
+                          selection.selected_rate,
+                          selection.competitive_market_count,
+                        )}
+                      </p>
+                    </article>
+                  ),
+                )}
               </div>
             </section>
 
-            <section className="result-section recommendation-card">
+            <section className="result-section">
               <h2>Recommendation</h2>
 
               <p className="recommendation-summary">
@@ -225,11 +325,13 @@ function App() {
               </p>
 
               <ul>
-                {analysis.recommendation.details.map((detail, index) => (
-                  <li key={index}>
-                    {detail}
-                  </li>
-                ))}
+                {analysis.recommendation.details.map(
+                  (detail, index) => (
+                    <li key={index}>
+                      {detail}
+                    </li>
+                  ),
+                )}
               </ul>
             </section>
           </div>
