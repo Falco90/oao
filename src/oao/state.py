@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import TypedDict
 
-from oao.models.analysis import ProtocolAnalysis
+from oao.models.analysis import ProtocolAnalysis, SelectionAnalysis
 from oao.models.recommendation import Recommendation
 
 
@@ -27,4 +27,5 @@ class AgentState(TypedDict):
     holdings: list[TokenHolding]
     opportunities: list[Opportunity]
     protocol_analyses: list[ProtocolAnalysis]
+    selection_analyses: list[SelectionAnalysis]
     recommendation: Recommendation

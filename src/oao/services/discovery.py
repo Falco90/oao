@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-from oao.models.analysis import ProtocolAnalysis
+from oao.models.analysis import ProtocolAnalysis, SelectionAnalysis
 from oao.services.recommendation import generate_recommendation
 
 load_dotenv()
@@ -392,7 +392,7 @@ def match_markets_to_holdings(
     
 async def discover_wallet_markets(
     holdings: list[TokenHolding],
-) -> tuple[list[Opportunity], list[ProtocolAnalysis]]:
+) -> tuple[list[Opportunity], list[ProtocolAnalysis], list[SelectionAnalysis]]:
     protocol_discovery = await discover_protocols(
         holdings
     )
@@ -431,11 +431,11 @@ async def discover_wallet_markets(
         holdings,
     )
     
-    opportunities = optimize_opportunities(
+    opportunities, selection_analyses = optimize_opportunities(
         matched_markets
     )
 
-    return opportunities, protocol_analyses
+    return opportunities, protocol_analyses, selection_analyses
     
     
 if __name__ == "__main__":
