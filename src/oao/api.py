@@ -1,4 +1,3 @@
-import asyncio
 import json
 
 from fastapi import FastAPI, HTTPException
@@ -59,6 +58,36 @@ async def analyze_stream(wallet_address: WalletAddress):
                         node_name,
                     ),
                 }
+                
+                if node_name == "analyze_wallet":
+                    event["data"] = {
+                        "holdings": [
+                            {
+                                "symbol": holding["symbol"],
+                                "amount": str(holding["amount"]),
+                                "network": holding["network"],
+                                "contract_address": holding[
+                                    "contract_address"
+                                ],
+                            }
+                            for holding in node_output["holdings"]
+                        ]
+                    }
+                    
+                if node_name == "discover_protocol_candidates":
+                    event["data"] = {
+                        "protocols": node_output["protocols"],
+                    }
+                    
+                if node_name == "discover_opportunities":
+                    event["data"] = {
+                        "protocol_analyses": [
+                            analysis.model_dump()
+                            for analysis in node_output[
+                                "protocol_analyses"
+                            ]
+                        ],
+                    }
 
                 yield f"data: {json.dumps(event)}\n\n"
 

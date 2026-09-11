@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import './App.css'
 
-import type { AnalyzeResponse } from './types/api'
+import type { AnalyzeResponse, Holding, ProtocolAnalysis } from './types/api'
 
 import {
   formatRate,
@@ -14,6 +14,11 @@ type ProgressEvent = {
   type: 'progress'
   stage: string
   message: string
+  data?: {
+    holdings?: Holding[]
+    protocols?: string[]
+    protocol_analyses?: ProtocolAnalysis[]
+  }
 }
 
 type CompleteEvent = {
@@ -25,7 +30,11 @@ type StreamEvent = ProgressEvent | CompleteEvent
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
-  const [progressMessage, setProgressMessage] = useState('')
+  const [progressMessages, setProgressMessages] = useState<string[]>([])
+  const [holdings, setHoldings] = useState<Holding[]>([])
+  const [protocols, setProtocols] = useState<string[]>([])
+  const [protocolAnalyses, setProtocolAnalyses] =
+    useState<ProtocolAnalysis[]>([])
   const [analysis, setAnalysis] =
     useState<AnalyzeResponse | null>(null)
 
@@ -43,10 +52,13 @@ function App() {
     setIsLoading(true)
     setError(null)
     setAnalysis(null)
-    setProgressMessage('Starting analysis...')
+    setProgressMessages([])
+    setHoldings([])
+    setProtocols([])
+    setProtocolAnalyses([])
 
     const url =
-      'http://127.0.0.1:8000/analyze/stream' +
+      'http://127.0.0.1:8000/analyze' +
       `?wallet_address=${encodeURIComponent(walletAddress)}`
 
     const stream = new EventSource(url)
@@ -55,13 +67,38 @@ function App() {
       const message: StreamEvent = JSON.parse(event.data)
 
       if (message.type === 'progress') {
-        setProgressMessage(message.message)
+        setProgressMessages((current) => [
+          ...current,
+          message.message,
+        ])
+
+        if (
+          message.stage === 'analyze_wallet' &&
+          message.data?.holdings
+        ) {
+          setHoldings(message.data.holdings)
+        }
+
+        if (
+          message.stage === 'discover_protocol_candidates' &&
+          message.data?.protocols
+        ) {
+          setProtocols(message.data.protocols)
+        }
+
+        if (
+          message.stage === 'discover_opportunities' &&
+          message.data?.protocol_analyses
+        ) {
+          setProtocolAnalyses(
+            message.data.protocol_analyses,
+          )
+        }
       }
 
       if (message.type === 'complete') {
         setAnalysis(message.data)
         setIsLoading(false)
-        setProgressMessage('')
         stream.close()
       }
     }
@@ -71,7 +108,7 @@ function App() {
         'Unable to analyze this wallet. Please try again.',
       )
       setIsLoading(false)
-      setProgressMessage('')
+      setProgressMessages([])
       stream.close()
     }
   }
@@ -114,15 +151,106 @@ function App() {
         </div>
 
         {isLoading && (
-          <p className="status-message">
-            {progressMessage}
-          </p>
+          <div className="progress-list">
+            {progressMessages.length === 0 ? (
+              <p className="status-message">
+                Starting analysis...
+              </p>
+            ) : (
+              progressMessages.map((message) => (
+                <p
+                  className="status-message"
+                  key={message}
+                >
+                  ✓ {message}
+                </p>
+              ))
+            )}
+          </div>
         )}
 
         {error && (
           <p className="error-message">
             {error}
           </p>
+        )}
+
+        {holdings.length > 0 && !analysis && (
+          <div className="analysis-results">
+            <section className="result-section">
+              <h2>Wallet holdings</h2>
+
+              <div className="result-list">
+                {holdings.map((holding) => (
+                  <div
+                    className="result-row"
+                    key={
+                      holding.contract_address ??
+                      holding.symbol
+                    }
+                  >
+                    <span>{holding.symbol}</span>
+                    <strong>{holding.amount}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {protocolAnalyses.length > 0 && !analysis ? (
+          <section className="result-section">
+            <h2>Protocols analyzed</h2>
+
+            <div className="card-grid">
+              {protocolAnalyses.map((protocol) => (
+                <article
+                  className="protocol-card"
+                  key={protocol.protocol}
+                >
+                  <h3>{protocol.protocol}</h3>
+
+                  <p>
+                    Markets found: {protocol.market_count}
+                  </p>
+
+                  {protocol.validated_subgraphs.length > 0 ? (
+                    <ul>
+                      {protocol.validated_subgraphs.map(
+                        (subgraph) => (
+                          <li key={subgraph}>
+                            {subgraph}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  ) : (
+                    <p>
+                      No validated Ethereum Subgraphs
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : (
+          protocols.length > 0 &&
+          !analysis && (
+            <section className="result-section">
+              <h2>Protocols being considered</h2>
+
+              <div className="card-grid">
+                {protocols.map((protocol) => (
+                  <article
+                    className="protocol-card"
+                    key={protocol}
+                  >
+                    <h3>{protocol}</h3>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )
         )}
 
         {analysis && (
