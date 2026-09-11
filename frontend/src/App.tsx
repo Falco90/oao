@@ -144,6 +144,37 @@ function App() {
             </section>
 
             <section className="result-section">
+              <h2>Protocols analyzed</h2>
+
+              <div className="card-grid">
+                {analysis.protocol_analyses.map((protocol) => (
+                  <article
+                    className="protocol-card"
+                    key={protocol.protocol}
+                  >
+                    <h3>{protocol.protocol}</h3>
+
+                    <p>
+                      Markets found: {protocol.market_count}
+                    </p>
+
+                    {protocol.validated_subgraphs.length > 0 ? (
+                      <ul>
+                        {protocol.validated_subgraphs.map((subgraph) => (
+                          <li key={subgraph}>
+                            {subgraph}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p>No validated Ethereum Subgraphs</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="result-section">
               <h2>How this was chosen</h2>
 
               <div className="card-grid">

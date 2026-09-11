@@ -167,6 +167,27 @@
   color: #b91c1c;
 }
 
+.protocol-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+}
+
+.protocol-card h3 {
+  margin-top: 0;
+}
+
+.protocol-card p,
+.protocol-card li {
+  color: #4b5563;
+}
+
+.protocol-card ul {
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+}
+
 @media (max-width: 600px) {
   .app {
     padding-top: 5rem;
