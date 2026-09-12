@@ -1,199 +1,487 @@
+#root {
+  min-height: 100vh;
+}
+
+/* -------------------------------------------------- */
+/* App shell                                          */
+/* -------------------------------------------------- */
+
 .app {
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 8rem 1.5rem;
+  padding: 28px;
 }
+
+.app-container {
+  width: min(1500px, 100%);
+  margin: 0 auto;
+}
+
+/* -------------------------------------------------- */
+/* Header / hero                                      */
+/* -------------------------------------------------- */
 
 .hero {
-  width: 100%;
-  max-width: 720px;
-  text-align: center;
+  margin-bottom: 24px;
 }
 
-.title {
-  margin: 0;
-  font-size: 3rem;
-  letter-spacing: -0.05em;
+.hero h1 {
+  margin-bottom: 6px;
+
+  color: var(--accent);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
 }
 
-.subtitle {
-  margin: 0.5rem 0 0;
-  color: #4b5563;
-  font-size: 1.1rem;
+.hero h1::after {
+  content: "_";
+  color: var(--accent-bright);
 }
 
-.description {
-  margin: 1.5rem 0 0;
-  color: #6b7280;
+.hero p {
+  margin-bottom: 18px;
+
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
+
+/* -------------------------------------------------- */
+/* Wallet form                                        */
+/* -------------------------------------------------- */
 
 .wallet-form {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 2rem;
+  width: 100%;
+  gap: 10px;
 }
 
 .wallet-input {
   flex: 1;
   min-width: 0;
-  padding: 0.9rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  background: white;
-  outline: none;
+
+  padding: 13px 15px;
+
+  color: var(--text-bright);
+  background: rgba(3, 11, 9, 0.75);
+
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease;
+}
+
+.wallet-input::placeholder {
+  color: var(--text-muted);
+}
+
+.wallet-input:hover {
+  background: var(--surface);
 }
 
 .wallet-input:focus {
-  border-color: #111827;
+  outline: none;
+  border-color: var(--accent);
+
+  box-shadow:
+    0 0 0 2px rgba(74, 222, 168, 0.08),
+    0 0 18px rgba(74, 222, 168, 0.06);
 }
 
 .analyze-button {
-  padding: 0.9rem 1.25rem;
-  border: 0;
-  border-radius: 0.5rem;
-  background: #111827;
-  color: white;
+  flex-shrink: 0;
+
+  padding: 12px 22px;
+
+  color: #03100c;
+  background: var(--accent);
+
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+
+  font-weight: 800;
+
   cursor: pointer;
-  font-weight: 600;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.analyze-button:hover {
-  background: #374151;
+.analyze-button::before {
+  content: "> ";
+}
+
+.analyze-button:hover:not(:disabled) {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+
+  box-shadow: 0 0 18px rgba(74, 222, 168, 0.16);
+
+  transform: translateY(-1px);
+}
+
+.analyze-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .analyze-button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.analysis-results {
-  margin-top: 4rem;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+/* -------------------------------------------------- */
+/* Status / errors                                    */
+/* -------------------------------------------------- */
+
+.status-message {
+  margin: 6px 0;
+
+  color: var(--accent);
+  font-size: 0.85rem;
 }
 
+.status-message::before {
+  content: "> ";
+  color: var(--text-muted);
+}
+
+.error-message {
+  margin-top: 14px;
+  padding: 12px 14px;
+
+  color: var(--error);
+  background: rgba(251, 113, 133, 0.06);
+
+  border: 1px solid rgba(251, 113, 133, 0.4);
+  border-radius: 4px;
+
+  font-size: 0.85rem;
+}
+
+.progress-list {
+  margin-top: 18px;
+
+  padding: 14px 16px;
+
+  background: rgba(9, 23, 20, 0.65);
+
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+/* -------------------------------------------------- */
+/* Main analysis area                                 */
+/* -------------------------------------------------- */
+
+.analysis-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  margin-top: 22px;
+}
+
+/* -------------------------------------------------- */
+/* Generic section                                    */
+/* -------------------------------------------------- */
+
 .result-section {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
+  padding: 18px;
+
+  background: rgba(9, 23, 20, 0.82);
+
+  border: 1px solid var(--border);
+  border-radius: 4px;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.015),
+    0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
 .result-section h2 {
-  margin-top: 0;
-  margin-bottom: 1.25rem;
-  font-size: 1.25rem;
+  margin-bottom: 14px;
+
+  color: var(--accent);
+
+  font-size: 0.9rem;
+  font-weight: 700;
+
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
+
+.result-section h2::before {
+  content: "> ";
+  color: var(--accent-bright);
+}
+
+.result-section h3 {
+  margin-bottom: 8px;
+
+  color: var(--text-bright);
+  font-size: 1rem;
+}
+
+/* -------------------------------------------------- */
+/* Simple result rows                                 */
+/* -------------------------------------------------- */
 
 .result-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
 
 .result-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 16px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid rgba(31, 77, 64, 0.65);
 }
 
 .result-row:last-child {
-  padding-bottom: 0;
   border-bottom: 0;
 }
 
+.result-row span {
+  color: var(--text-muted);
+}
+
+.result-row strong {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+/* -------------------------------------------------- */
+/* Cards / grids                                      */
+/* -------------------------------------------------- */
+
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit,
-      minmax(240px, 1fr));
-  gap: 1rem;
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(210px, 1fr)
+    );
+
+  gap: 12px;
 }
 
 .opportunity-card,
-.selection-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  background: #f9fafb;
+.selection-card,
+.protocol-card {
+  padding: 14px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(13, 29, 25, 0.95),
+      rgba(7, 19, 16, 0.95)
+    );
+
+  border: 1px solid var(--border);
+  border-radius: 4px;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.opportunity-card:hover,
+.selection-card:hover,
+.protocol-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
 .opportunity-card h3,
-.selection-card h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+.selection-card h3,
+.protocol-card h3 {
+  color: var(--text-bright);
 }
+
+/* -------------------------------------------------- */
+/* Opportunity cards                                  */
+/* -------------------------------------------------- */
 
 .opportunity-card p,
-.selection-card p {
-  margin: 0.5rem 0;
-  color: #4b5563;
+.selection-card p,
+.protocol-card p {
+  margin: 6px 0;
+
+  color: var(--text-muted);
+
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
-.selection-reason {
-  margin-top: 1rem !important;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-  color: #111827 !important;
+.opportunity-card strong,
+.selection-card strong {
+  color: var(--accent-bright);
 }
 
-.recommendation-summary {
-  font-weight: 600;
-  line-height: 1.6;
-}
-
-.recommendation-card ul {
-  margin: 1.25rem 0 0;
-  padding-left: 1.25rem;
-}
-
-.recommendation-card li {
-  margin-bottom: 0.9rem;
-  line-height: 1.6;
-  color: #4b5563;
-}
-
-.status-message {
-  margin-top: 1rem;
-  color: #6b7280;
-}
-
-.error-message {
-  margin-top: 1rem;
-  color: #b91c1c;
-}
+/* -------------------------------------------------- */
+/* Protocol cards                                     */
+/* -------------------------------------------------- */
 
 .protocol-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  background: #f9fafb;
+  position: relative;
 }
 
 .protocol-card h3 {
-  margin-top: 0;
-}
-
-.protocol-card p,
-.protocol-card li {
-  color: #4b5563;
+  padding-right: 8px;
 }
 
 .protocol-card ul {
-  margin-bottom: 0;
-  padding-left: 1.25rem;
+  margin: 10px 0 0;
+  padding-left: 18px;
+
+  color: var(--text-muted);
 }
 
-@media (max-width: 600px) {
+.protocol-card li {
+  margin: 5px 0;
+
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.protocol-card li::marker {
+  color: var(--accent);
+}
+
+/* -------------------------------------------------- */
+/* Selection explanation                              */
+/* -------------------------------------------------- */
+
+.selection-reason {
+  margin-top: 10px;
+  padding-top: 10px;
+
+  color: var(--text-muted);
+
+  border-top: 1px solid var(--border);
+
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+/* -------------------------------------------------- */
+/* Recommendation                                     */
+/* -------------------------------------------------- */
+
+.recommendation-summary {
+  color: var(--text-bright);
+
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+/* Make recommendation visually stronger already,
+   even before the horizontal layout refactor. */
+
+.result-section:last-child {
+  border-color: var(--border-strong);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(9, 31, 25, 0.96),
+      rgba(5, 18, 15, 0.98)
+    );
+
+  box-shadow:
+    inset 0 0 40px rgba(74, 222, 168, 0.025),
+    0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.result-section:last-child h2 {
+  color: var(--accent-bright);
+}
+
+/* -------------------------------------------------- */
+/* Utility / emphasis                                 */
+/* -------------------------------------------------- */
+
+strong {
+  color: var(--text-bright);
+}
+
+::selection {
+  color: #03100c;
+  background: var(--accent);
+}
+
+/* -------------------------------------------------- */
+/* Scrollbars                                         */
+/* -------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--bg);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* -------------------------------------------------- */
+/* Responsive                                         */
+/* -------------------------------------------------- */
+
+@media (max-width: 800px) {
   .app {
-    padding-top: 5rem;
+    padding: 18px;
   }
 
   .wallet-form {
     flex-direction: column;
+  }
+
+  .analyze-button {
+    width: 100%;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 14px;
+  }
+
+  .result-section {
+    padding: 14px;
+  }
+
+  .hero h1 {
+    font-size: 2rem;
   }
 }
