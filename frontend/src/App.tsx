@@ -2,13 +2,7 @@ import { useState } from 'react'
 
 import './App.css'
 
-import type { AnalyzeResponse, Holding, Opportunity, ProtocolAnalysis } from './types/api'
-
-import {
-  formatRate,
-  formatUsd,
-  getSelectionReason,
-} from './utils/format'
+import type { AnalyzeResponse, Holding, Opportunity, ProtocolAnalysis, Recommendation } from './types/api'
 
 type ProgressEvent = {
   type: 'progress'
@@ -19,6 +13,7 @@ type ProgressEvent = {
     protocols?: string[]
     protocol_analyses?: ProtocolAnalysis[]
     eligible_markets?: Opportunity[]
+    opportunities?: Opportunity[]
   }
 }
 
@@ -57,6 +52,49 @@ type ProtocolFailedEvent = {
 
 type StreamEvent = ProgressEvent | ProtocolStartedEvent | ProtocolCompletedEvent | ProtocolFailedEvent | CompleteEvent
 
+type PipelineStage =
+  | 'wallet'
+  | 'protocols'
+  | 'markets'
+  | 'optimize'
+  | 'recommend'
+
+type PipelineStatus =
+  | 'waiting'
+  | 'running'
+  | 'complete'
+
+const PIPELINE_STAGES: {
+  id: PipelineStage
+  number: string
+  label: string
+}[] = [
+    { id: 'wallet', number: '01', label: 'Wallet' },
+    { id: 'protocols', number: '02', label: 'Protocols' },
+    { id: 'markets', number: '03', label: 'Markets' },
+    { id: 'optimize', number: '04', label: 'Optimize' },
+    { id: 'recommend', number: '05', label: 'Recommend' },
+  ]
+
+type StageDetails = {
+  wallet?: {
+    holdings: Holding[]
+  }
+  protocols?: {
+    protocols: string[]
+  }
+  markets?: {
+    protocolProgress: ProtocolProgress[]
+    eligibleMarkets: Opportunity[]
+  }
+  optimize?: {
+    opportunities: Opportunity[]
+  }
+  recommend?: {
+    recommendation: Recommendation
+  }
+}
+
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
   const [progressMessages, setProgressMessages] = useState<string[]>([])
@@ -70,6 +108,10 @@ function App() {
     useState<ProtocolProgress[]>([])
   const [eligibleMarkets, setEligibleMarkets] =
     useState<Opportunity[]>([])
+  const [currentStage, setCurrentStage] =
+    useState<PipelineStage | null>(null)
+  const [stageDetails, setStageDetails] =
+    useState<StageDetails>({})
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +133,8 @@ function App() {
     setProtocolAnalyses([])
     setProtocolProgress([])
     setEligibleMarkets([])
-
+    setCurrentStage('wallet')
+    setStageDetails({})
 
     const url =
       'http://127.0.0.1:8000/analyze' +
@@ -113,6 +156,16 @@ function App() {
           message.data?.holdings
         ) {
           setHoldings(message.data.holdings)
+
+
+          setStageDetails((current) => ({
+            ...current,
+            wallet: {
+              holdings: message.data!.holdings!,
+            },
+          }))
+
+          setCurrentStage('protocols')
         }
 
         if (
@@ -121,14 +174,21 @@ function App() {
         ) {
           setProtocols(message.data.protocols)
 
+          setStageDetails((current) => ({
+            ...current,
+            protocols: {
+              protocols: message.data!.protocols!,
+            },
+          }))
+
+          setCurrentStage('markets')
+
           const initialProgress = message.data.protocols.map(
             (protocol) => ({
               protocol,
               status: 'waiting' as const,
             }),
           )
-
-          console.log(initialProgress)
 
           setProtocolProgress(initialProgress)
         }
@@ -140,6 +200,7 @@ function App() {
           setProtocolAnalyses(
             message.data.protocol_analyses,
           )
+          setCurrentStage('optimize')
         }
 
         if (
@@ -149,10 +210,30 @@ function App() {
           setEligibleMarkets(
             message.data.eligible_markets,
           )
-          console.log(
-            'eligible markets:',
-            message.data.eligible_markets,
-          )
+
+          setStageDetails((current) => ({
+            ...current,
+            markets: {
+              protocolProgress,
+              eligibleMarkets:
+                message.data!.eligible_markets!,
+            },
+          }))
+
+        }
+
+        if (
+          message.stage === 'optimize_eligible_markets' &&
+          message.data?.opportunities
+        ) {
+          setStageDetails((current) => ({
+            ...current,
+            optimize: {
+              opportunities: message.data!.opportunities!,
+            },
+          }))
+
+          setCurrentStage('recommend')
         }
       }
 
@@ -200,6 +281,15 @@ function App() {
       }
 
       if (message.type === 'complete') {
+        setStageDetails((current) => ({
+          ...current,
+          recommend: {
+            recommendation: message.data.recommendation,
+          },
+        }))
+
+        setCurrentStage(null)
+
         setAnalysis(message.data)
         setIsLoading(false)
         stream.close()
@@ -214,6 +304,36 @@ function App() {
       setProgressMessages([])
       stream.close()
     }
+  }
+
+  function getPipelineStatus(
+    stage: PipelineStage,
+  ): PipelineStatus {
+    if (!isLoading && analysis) {
+      return 'complete'
+    }
+
+    if (!currentStage) {
+      return 'waiting'
+    }
+
+    const currentIndex = PIPELINE_STAGES.findIndex(
+      (item) => item.id === currentStage,
+    )
+
+    const stageIndex = PIPELINE_STAGES.findIndex(
+      (item) => item.id === stage,
+    )
+
+    if (stageIndex < currentIndex) {
+      return 'complete'
+    }
+
+    if (stageIndex === currentIndex) {
+      return 'running'
+    }
+
+    return 'waiting'
   }
 
   return (
@@ -257,378 +377,255 @@ function App() {
         </form>
       </header>
 
-      {isLoading && (
-        <div className="progress-list">
-          {progressMessages.length === 0 ? (
-            <p className="status-message">
-              Starting analysis...
-            </p>
-          ) : (
-            progressMessages.map((message) => (
-              <p
-                className="status-message"
-                key={message}
-              >
-                ✓ {message}
-              </p>
-            ))
-          )}
-        </div>
-      )}
+      {(isLoading || analysis) && (
+        <>
+          <div className="analysis-pipeline">
+            {PIPELINE_STAGES.map((stage, index) => {
+              const status = getPipelineStatus(stage.id)
 
-      {error && (
-        <p className="error-message">
-          {error}
-        </p>
-      )}
-
-      {holdings.length > 0 && !analysis && (
-        <div className="analysis-results">
-          <section className="result-section">
-            <h2>Wallet holdings</h2>
-
-            <div className="result-list">
-              {holdings.map((holding) => (
+              return (
                 <div
-                  className="result-row"
-                  key={
-                    holding.contract_address ??
-                    holding.symbol
-                  }
+                  className="pipeline-item"
+                  key={stage.id}
                 >
-                  <span>{holding.symbol}</span>
-                  <strong>{holding.amount}</strong>
+                  <div
+                    className={`pipeline-stage pipeline-stage--${status}`}
+                  >
+                    <div className="pipeline-label">
+                      <span>{stage.number}</span>
+                      {stage.label}
+                    </div>
+
+                    <div className="pipeline-status">
+                      {status === 'complete' && '✓ COMPLETE'}
+                      {status === 'running' && '● RUNNING'}
+                      {status === 'waiting' && 'WAITING'}
+                    </div>
+                  </div>
+
+                  {index < PIPELINE_STAGES.length - 1 && (
+                    <span className="pipeline-arrow">
+                      →
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
+              )
+            })}
+          </div>
 
-      {protocolAnalyses.length > 0 && !analysis ? (
-        <section className="result-section">
-          <h2>Protocols analyzed</h2>
+          <div className="pipeline-details-grid">
+            <div className="stage-detail">
+              {stageDetails.wallet && (
+                <>
+                  <div className="stage-detail-title">
+                    &gt; holdings
+                  </div>
 
-          <div className="card-grid">
-            {protocolAnalyses.map((protocol) => (
-              <article
-                className="protocol-card"
-                key={protocol.protocol}
-              >
-                <h3>{protocol.protocol}</h3>
+                  {stageDetails.wallet.holdings.map(
+                    (holding) => (
+                      <div
+                        className="stage-detail-row"
+                        key={`${holding.network}-${holding.symbol}`}
+                      >
+                        <span>{holding.symbol}</span>
+                        <span>{holding.amount}</span>
+                      </div>
+                    ),
+                  )}
+                </>
+              )}
 
-                <p>
-                  Markets found: {protocol.market_count}
+              {currentStage === 'wallet' && (
+                <p className="stage-running-text">&gt; analyzing wallet holdinngs
+                  <span className="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
                 </p>
+              )}
+            </div>
 
-                {protocol.validated_subgraphs.length > 0 ? (
-                  <ul>
-                    {protocol.validated_subgraphs.map(
-                      (subgraph) => (
-                        <li key={subgraph}>
-                          {subgraph}
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                ) : (
-                  <p>
-                    No validated Ethereum Subgraphs
+            <div className="stage-detail">
+              {stageDetails.protocols && (
+                <>
+                  <div className="stage-detail-title">
+                    &gt; protocols
+                  </div>
+
+                  {stageDetails.protocols.protocols.map(
+                    (protocol) => (
+                      <div
+                        className="stage-detail-row"
+                        key={protocol}
+                      >
+                        <span>{protocol}</span>
+                      </div>
+                    ),
+                  )}
+                </>
+              )}
+
+              {currentStage === 'protocols' && (
+                <p className="stage-running-text">&gt; discovering lending protocols
+                  <span className="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div className="stage-detail">
+              {protocolProgress.length > 0 && (
+                <>
+                  <div className="stage-detail-title">
+                    &gt; markets
+                  </div>
+
+                  {protocolProgress.map((item) => (
+                    <div
+                      className="stage-detail-row"
+                      key={item.protocol}
+                    >
+                      <span>{item.protocol}</span>
+
+                      <span>
+                        {item.status === 'waiting' &&
+                          'WAITING'}
+
+                        {item.status === 'scanning' &&
+                          (
+                            <>
+                              <span className="scanning-dot">●</span>
+                              {' SCANNING'}
+                            </>
+                          )}
+
+                        {item.status === 'completed' &&
+                          `✓ ${item.analysis?.market_count ?? 0}`}
+
+                        {item.status === 'failed' &&
+                          '✕ FAILED'}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
+
+
+
+              {currentStage === 'markets' &&
+                protocolProgress.length === 0 && (
+                  <p className="stage-running-text">&gt; preparing market scan
+                    <span className="loading-dots">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
                   </p>
                 )}
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : (
-        protocols.length > 0 &&
-        !analysis && (
-          <section className="result-section">
-            <h2>Protocols being considered</h2>
-
-            <div className="card-grid">
-              {protocolProgress.map((item) => (
-                <article
-                  className="protocol-card"
-                  key={item.protocol}
-                >
-                  <h3>{item.protocol}</h3>
-
-                  {item.status === 'waiting' && (
-                    <p>Waiting</p>
-                  )}
-
-                  {item.status === 'scanning' && (
-                    <p>Scanning...</p>
-                  )}
-
-                  {item.status === 'failed' && (
-                    <p>✕ Failed to analyze</p>
-                  )}
-
-                  {item.status === 'completed' &&
-                    item.analysis && (
-                      <>
-                        <p>
-                          ✓ {item.analysis.market_count} markets
-                          {' · '}
-                          {item.analysis.validated_subgraphs.length}{' '}
-                          Subgraphs
-                        </p>
-
-                        {item.analysis.validated_subgraphs.length > 0 && (
-                          <ul>
-                            {item.analysis.validated_subgraphs.map(
-                              (subgraph) => (
-                                <li key={subgraph}>
-                                  {subgraph}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        )}
-                      </>
-                    )}
-                </article>
-              ))}
             </div>
-          </section>
-        )
-      )}
 
-      {eligibleMarkets.length > 0 && !analysis && (
-        <section className="result-section">
-          <h2>Eligible markets</h2>
+            <div className="stage-detail">
+              {stageDetails.optimize && (
+                <>
+                  <div className="stage-detail-title">
+                    &gt; selected
+                  </div>
 
-          <div className="card-grid">
-            {eligibleMarkets.map((market) => (
-              <article
-                className="opportunity-card"
-                key={market.market_id}
-              >
-                <h3>
-                  {market.protocol} · {market.symbol}
-                </h3>
+                  {stageDetails.optimize.opportunities.map(
+                    (opportunity) => (
+                      <div
+                        className="stage-detail-row"
+                        key={opportunity.market_id}
+                      >
+                        <span>{opportunity.symbol}</span>
+                        <span>{opportunity.protocol}</span>
+                      </div>
+                    ),
+                  )}
+                </>
+              )}
 
-                <p>{market.subgraph_name}</p>
-                <p>Rate: {formatRate(market.supply_rate)}</p>
-                <p>TVL: {formatUsd(market.tvl_usd)}</p>
-              </article>
-            ))}
+              {currentStage === 'optimize' &&
+                !stageDetails.optimize && (
+                  <p className="stage-running-text">&gt; selecting best opportunities
+                    <span className="loading-dots">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </p>
+                )}
+            </div>
+            <div className="stage-detail">
+              {stageDetails.recommend && (
+                <>
+                  <div className="stage-detail-title">
+                    &gt; recommendation
+                  </div>
+
+                  <p className="stage-detail-summary">
+                    {stageDetails.recommend.recommendation.summary}
+                  </p>
+                </>
+              )}
+
+              {currentStage === 'recommend' &&
+                !stageDetails.recommend && (
+                  <p className="stage-running-text">&gt; generating recommendation
+                    <span className="loading-dots">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </p>
+                )}
+            </div>
           </div>
-        </section>
+        </>
       )}
 
       {analysis && (
-        <div className="analysis-results">
-          <section className="result-section">
-            <h2>Wallet holdings</h2>
+        <section className="recommendation-panel">
+          <div className="recommendation-panel-header">
+            <div>
+              <span className="recommendation-eyebrow">
+                FINAL OUTPUT
+              </span>
 
-            <div className="result-list">
-              {analysis.holdings.map((holding) => (
-                <div
-                  className="result-row"
-                  key={
-                    holding.contract_address ??
-                    holding.symbol
-                  }
-                >
-                  <span>
-                    {holding.symbol}
-                  </span>
-
-                  <strong>
-                    {holding.amount}
-                  </strong>
-                </div>
-              ))}
+              <h2>Recommendation</h2>
             </div>
-          </section>
 
-          <section className="result-section">
-            <h2>Best opportunities</h2>
+            <span className="recommendation-status">
+              ✓ ANALYSIS COMPLETE
+            </span>
+          </div>
 
-            <div className="card-grid">
-              {analysis.opportunities.map(
-                (opportunity) => (
-                  <article
-                    className="opportunity-card"
-                    key={opportunity.market_id}
-                  >
-                    <h3>
-                      {opportunity.protocol}
-                    </h3>
-
-                    <p>
-                      {opportunity.symbol}
-                    </p>
-
-                    <div className="result-row">
-                      <span>Supply rate</span>
-
-                      <strong>
-                        {formatRate(
-                          opportunity.supply_rate,
-                        )}
-                      </strong>
-                    </div>
-
-                    <div className="result-row">
-                      <span>TVL</span>
-
-                      <strong>
-                        {formatUsd(
-                          opportunity.tvl_usd,
-                        )}
-                      </strong>
-                    </div>
-
-                    <div className="result-row">
-                      <span>Subgraph</span>
-
-                      <strong>
-                        {
-                          opportunity.subgraph_name
-                        }
-                      </strong>
-                    </div>
-                  </article>
-                ),
-              )}
-            </div>
-          </section>
-
-          <section className="result-section">
-            <h2>Protocols analyzed</h2>
-
-            <div className="card-grid">
-              {analysis.protocol_analyses.map(
-                (protocol) => (
-                  <article
-                    className="protocol-card"
-                    key={protocol.protocol}
-                  >
-                    <h3>
-                      {protocol.protocol}
-                    </h3>
-
-                    <p>
-                      Markets found:{' '}
-                      {protocol.market_count}
-                    </p>
-
-                    {protocol.validated_subgraphs
-                      .length > 0 ? (
-                      <ul>
-                        {protocol.validated_subgraphs.map(
-                          (subgraph) => (
-                            <li key={subgraph}>
-                              {subgraph}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    ) : (
-                      <p>
-                        No validated Ethereum
-                        Subgraphs
-                      </p>
-                    )}
-                  </article>
-                ),
-              )}
-            </div>
-          </section>
-
-          <section className="result-section">
-            <h2>How this was chosen</h2>
-
-            <div className="card-grid">
-              {analysis.selection_analyses.map(
-                (selection) => (
-                  <article
-                    className="selection-card"
-                    key={selection.symbol}
-                  >
-                    <h3>
-                      {selection.symbol}
-                    </h3>
-
-                    <div className="result-row">
-                      <span>
-                        Selected protocol
-                      </span>
-
-                      <strong>
-                        {
-                          selection.selected_protocol
-                        }
-                      </strong>
-                    </div>
-
-                    <div className="result-row">
-                      <span>
-                        Selected rate
-                      </span>
-
-                      <strong>
-                        {formatRate(
-                          selection.selected_rate,
-                        )}
-                      </strong>
-                    </div>
-
-                    <div className="result-row">
-                      <span>Best rate</span>
-
-                      <strong>
-                        {formatRate(
-                          selection.best_rate,
-                        )}
-                      </strong>
-                    </div>
-
-                    <div className="result-row">
-                      <span>Selected TVL</span>
-
-                      <strong>
-                        {formatUsd(
-                          selection.selected_tvl_usd,
-                        )}
-                      </strong>
-                    </div>
-
-                    <p className="selection-reason">
-                      {getSelectionReason(
-                        selection.best_rate,
-                        selection.selected_rate,
-                        selection.competitive_market_count,
-                      )}
-                    </p>
-                  </article>
-                ),
-              )}
-            </div>
-          </section>
-
-          <section className="result-section">
-            <h2>Recommendation</h2>
-
+          <div className="recommendation-body">
             <p className="recommendation-summary">
               {analysis.recommendation.summary}
             </p>
 
-            <ul>
-              {analysis.recommendation.details.map(
-                (detail, index) => (
-                  <li key={index}>
-                    {detail}
-                  </li>
-                ),
-              )}
-            </ul>
-          </section>
-        </div>
+            {analysis.recommendation.details.length > 0 && (
+              <div className="recommendation-details">
+                {analysis.recommendation.details.map(
+                  (detail, index) => (
+                    <div
+                      className="recommendation-detail"
+                      key={`${index}-${detail}`}
+                    >
+                      <span>&gt;</span>
+                      <p>{detail}</p>
+                    </div>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </section>
       )}
     </main>
   )
