@@ -76,16 +76,21 @@ async def analyze_stream(wallet_address: WalletAddress):
                             ],
                         }
 
-                    if node_name == "discover_protocol_candidates":
+                    elif node_name == "discover_protocol_candidates":
                         event["data"] = {
                             "protocols": node_output["protocols"],
                         }
 
-                    if node_name == "discover_opportunities":
+                    elif node_name == "discover_opportunities":
                         event["data"] = {
                             "eligible_markets": node_output[
                             "eligible_markets"
                             ],
+                        }
+                    
+                    elif node_name == "optimize_eligible_markets":
+                        event["data"] = {
+                            "opportunities": node_output["opportunities"],
                         }
                         
                     yield (
