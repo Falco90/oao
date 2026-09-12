@@ -81,6 +81,13 @@ async def analyze_stream(wallet_address: WalletAddress):
                             "protocols": node_output["protocols"],
                         }
 
+                    if node_name == "discover_opportunities":
+                        event["data"] = {
+                            "eligible_markets": node_output[
+                            "eligible_markets"
+                            ],
+                        }
+                        
                     yield (
                         f"data: {json.dumps(jsonable_encoder(event))}\n\n"
                     )

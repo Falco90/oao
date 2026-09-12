@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import './App.css'
 
-import type { AnalyzeResponse, Holding, ProtocolAnalysis } from './types/api'
+import type { AnalyzeResponse, Holding, Opportunity, ProtocolAnalysis } from './types/api'
 
 import {
   formatRate,
@@ -18,6 +18,7 @@ type ProgressEvent = {
     holdings?: Holding[]
     protocols?: string[]
     protocol_analyses?: ProtocolAnalysis[]
+    eligible_markets?: Opportunity[]
   }
 }
 
@@ -67,6 +68,8 @@ function App() {
     useState<AnalyzeResponse | null>(null)
   const [protocolProgress, setProtocolProgress] =
     useState<ProtocolProgress[]>([])
+  const [eligibleMarkets, setEligibleMarkets] =
+    useState<Opportunity[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +90,8 @@ function App() {
     setProtocols([])
     setProtocolAnalyses([])
     setProtocolProgress([])
+    setEligibleMarkets([])
+
 
     const url =
       'http://127.0.0.1:8000/analyze' +
@@ -134,6 +139,19 @@ function App() {
         ) {
           setProtocolAnalyses(
             message.data.protocol_analyses,
+          )
+        }
+
+        if (
+          message.stage === 'discover_opportunities' &&
+          message.data?.eligible_markets
+        ) {
+          setEligibleMarkets(
+            message.data.eligible_markets,
+          )
+          console.log(
+            'eligible markets:',
+            message.data.eligible_markets,
           )
         }
       }
@@ -372,6 +390,29 @@ function App() {
               </div>
             </section>
           )
+        )}
+
+        {eligibleMarkets.length > 0 && !analysis && (
+          <section className="result-section">
+            <h2>Eligible markets</h2>
+
+            <div className="card-grid">
+              {eligibleMarkets.map((market) => (
+                <article
+                  className="opportunity-card"
+                  key={market.market_id}
+                >
+                  <h3>
+                    {market.protocol} · {market.symbol}
+                  </h3>
+
+                  <p>{market.subgraph_name}</p>
+                  <p>Rate: {formatRate(market.supply_rate)}</p>
+                  <p>TVL: {formatUsd(market.tvl_usd)}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         {analysis && (
