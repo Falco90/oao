@@ -418,6 +418,14 @@ async def discover_wallet_markets(
             print(
                 f"{protocol}: discovery failed: {exc}"
             )
+            
+            writer(
+                {
+                    "type": "protocol_failed",
+                    "protocol": protocol,
+                }
+            )
+            
             continue
 
         all_markets.extend(markets)

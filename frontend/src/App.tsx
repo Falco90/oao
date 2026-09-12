@@ -25,6 +25,7 @@ type ProtocolStatus =
   | 'waiting'
   | 'scanning'
   | 'completed'
+  | 'failed'
 
 type ProtocolProgress = {
   protocol: string
@@ -48,7 +49,12 @@ type ProtocolCompletedEvent = {
   analysis: ProtocolAnalysis
 }
 
-type StreamEvent = ProgressEvent | ProtocolStartedEvent | ProtocolCompletedEvent | CompleteEvent
+type ProtocolFailedEvent = {
+  type: 'protocol_failed'
+  protocol: string
+}
+
+type StreamEvent = ProgressEvent | ProtocolStartedEvent | ProtocolCompletedEvent | ProtocolFailedEvent | CompleteEvent
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
@@ -156,6 +162,19 @@ function App() {
                 ...item,
                 status: 'completed',
                 analysis: message.analysis,
+              }
+              : item,
+          ),
+        )
+      }
+
+      if (message.type === 'protocol_failed') {
+        setProtocolProgress((current) =>
+          current.map((item) =>
+            item.protocol === message.protocol
+              ? {
+                ...item,
+                status: 'failed',
               }
               : item,
           ),
@@ -319,6 +338,10 @@ function App() {
 
                     {item.status === 'scanning' && (
                       <p>Scanning...</p>
+                    )}
+
+                    {item.status === 'failed' && (
+                      <p>✕ Failed to analyze</p>
                     )}
 
                     {item.status === 'completed' &&
