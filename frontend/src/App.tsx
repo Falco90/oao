@@ -347,15 +347,22 @@ function App() {
       <header className="hero">
         <div className="hero-copy">
           <div className="brand">
-            <h1>OAO</h1>
-            <span>
-              Onchain Asset Optimizer
-            </span>
-          </div>
+            <img
+              className="brand-logo"
+              src="/oao-logo.png"
+              alt="OAO"
+            />
 
-          <p className="description">
-            Discover. Compare. Optimize.
-          </p>
+            <div className="brand-copy">
+              <span className="brand-name">
+                Onchain Asset Optimizer
+              </span>
+
+              <p className="brand-tagline">
+                Find better yield onchain.
+              </p>
+            </div>
+          </div>
         </div>
 
         <form className="wallet-form"
