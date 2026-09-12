@@ -21,6 +21,18 @@ async def generate_recommendation(
     {opportunities}
 
     Explain the selected opportunities clearly and concisely.
+    he analysis currently covers Ethereum mainnet only.
+
+    Do not mention Ethereum, Ethereum mainnet, or the network
+    unless network context is necessary to explain something unusual.
+    Assume all opportunities are on the currently supported network.
+
+    Focus the recommendation on:
+    - asset
+    - protocol
+    - yield
+    - liquidity / TVL
+    - why the selected market was preferred
 
     Rules:
     - Treat the supplied holdings and opportunities as authoritative.
