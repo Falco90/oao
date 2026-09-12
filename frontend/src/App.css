@@ -573,6 +573,43 @@
   color: var(--accent);
 }
 
+.optimizer-result {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.optimizer-result:last-child {
+  border-bottom: 0;
+}
+
+.optimizer-result-header,
+.optimizer-result-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.optimizer-result-header {
+  margin-bottom: 4px;
+
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+.optimizer-result-header span:last-child {
+  color: var(--accent-bright);
+}
+
+.optimizer-result-row {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.optimizer-result-row span:last-child {
+  color: var(--text);
+}
+
 .selection-reason {
   margin-top: 10px;
   padding-top: 10px;

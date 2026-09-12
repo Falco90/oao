@@ -2,7 +2,8 @@ import { useState } from 'react'
 
 import './App.css'
 
-import type { AnalyzeResponse, Holding, Opportunity, ProtocolAnalysis, Recommendation } from './types/api'
+import type { AnalyzeResponse, Holding, Opportunity, ProtocolAnalysis, Recommendation, SelectionAnalysis } from './types/api'
+import { formatRate, formatUsd } from './utils/format'
 
 type ProgressEvent = {
   type: 'progress'
@@ -14,6 +15,7 @@ type ProgressEvent = {
     protocol_analyses?: ProtocolAnalysis[]
     eligible_markets?: Opportunity[]
     opportunities?: Opportunity[]
+    selection_analyses?: SelectionAnalysis[]
   }
 }
 
@@ -89,6 +91,7 @@ type StageDetails = {
   }
   optimize?: {
     opportunities: Opportunity[]
+    selectionAnalyses: SelectionAnalysis[]
   }
   recommend?: {
     recommendation: Recommendation
@@ -224,12 +227,15 @@ function App() {
 
         if (
           message.stage === 'optimize_eligible_markets' &&
-          message.data?.opportunities
+          message.data?.opportunities &&
+          message.data?.selection_analyses
         ) {
           setStageDetails((current) => ({
             ...current,
             optimize: {
               opportunities: message.data!.opportunities!,
+              selectionAnalyses:
+                message.data!.selection_analyses!,
             },
           }))
 
@@ -535,14 +541,41 @@ function App() {
                     &gt; selected
                   </div>
 
-                  {stageDetails.optimize.opportunities.map(
-                    (opportunity) => (
+                  {stageDetails.optimize.selectionAnalyses.map(
+                    (selection) => (
                       <div
-                        className="stage-detail-row"
-                        key={opportunity.market_id}
+                        className="optimizer-result"
+                        key={selection.symbol}
                       >
-                        <span>{opportunity.symbol}</span>
-                        <span>{opportunity.protocol}</span>
+                        <div className="optimizer-result-header">
+                          <span>{selection.symbol}</span>
+                          <span>
+                            {formatRate(selection.selected_rate)}
+                          </span>
+                        </div>
+
+                        <div className="optimizer-result-row">
+                          <span>protocol</span>
+                          <span>
+                            {selection.selected_protocol}
+                          </span>
+                        </div>
+
+                        <div className="optimizer-result-row">
+                          <span>TVL</span>
+                          <span>
+                            {formatUsd(
+                              selection.selected_tvl_usd,
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="optimizer-result-row">
+                          <span>competitive</span>
+                          <span>
+                            {selection.competitive_market_count}
+                          </span>
+                        </div>
                       </div>
                     ),
                   )}
@@ -551,7 +584,8 @@ function App() {
 
               {currentStage === 'optimize' &&
                 !stageDetails.optimize && (
-                  <p className="stage-running-text">&gt; selecting best opportunities
+                  <p className="stage-running-text">
+                    &gt; selecting opportunities
                     <span className="loading-dots">
                       <span>.</span>
                       <span>.</span>

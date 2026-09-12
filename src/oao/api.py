@@ -91,6 +91,9 @@ async def analyze_stream(wallet_address: WalletAddress):
                     elif node_name == "optimize_eligible_markets":
                         event["data"] = {
                             "opportunities": node_output["opportunities"],
+                            "selection_analyses": node_output[
+                            "selection_analyses"
+                            ],
                         }
                         
                     yield (
