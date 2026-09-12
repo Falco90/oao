@@ -218,12 +218,14 @@ function App() {
 
   return (
     <main className="app">
-      <section className="hero">
-        <div>
-          <h1>OAO</h1>
-          <p className="subtitle">
-            Onchain portfolio optimizer
-          </p>
+      <header className="hero">
+        <div className="hero-copy">
+          <div className="brand">
+            <h1>OAO</h1>
+            <span>
+              Onchain Asset Optimizer
+            </span>
+          </div>
 
           <p className="description">
             Analyze your Ethereum wallet for lending
@@ -231,7 +233,8 @@ function App() {
           </p>
         </div>
 
-        <div className="wallet-form">
+        <form className="wallet-form"
+          onSubmit={handleAnalyze}>
           <input
             className="wallet-input"
             type="text"
@@ -251,382 +254,382 @@ function App() {
           >
             {isLoading ? 'Analyzing...' : 'Analyze'}
           </button>
-        </div>
+        </form>
+      </header>
 
-        {isLoading && (
-          <div className="progress-list">
-            {progressMessages.length === 0 ? (
-              <p className="status-message">
-                Starting analysis...
+      {isLoading && (
+        <div className="progress-list">
+          {progressMessages.length === 0 ? (
+            <p className="status-message">
+              Starting analysis...
+            </p>
+          ) : (
+            progressMessages.map((message) => (
+              <p
+                className="status-message"
+                key={message}
+              >
+                ✓ {message}
               </p>
-            ) : (
-              progressMessages.map((message) => (
-                <p
-                  className="status-message"
-                  key={message}
+            ))
+          )}
+        </div>
+      )}
+
+      {error && (
+        <p className="error-message">
+          {error}
+        </p>
+      )}
+
+      {holdings.length > 0 && !analysis && (
+        <div className="analysis-results">
+          <section className="result-section">
+            <h2>Wallet holdings</h2>
+
+            <div className="result-list">
+              {holdings.map((holding) => (
+                <div
+                  className="result-row"
+                  key={
+                    holding.contract_address ??
+                    holding.symbol
+                  }
                 >
-                  ✓ {message}
+                  <span>{holding.symbol}</span>
+                  <strong>{holding.amount}</strong>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {protocolAnalyses.length > 0 && !analysis ? (
+        <section className="result-section">
+          <h2>Protocols analyzed</h2>
+
+          <div className="card-grid">
+            {protocolAnalyses.map((protocol) => (
+              <article
+                className="protocol-card"
+                key={protocol.protocol}
+              >
+                <h3>{protocol.protocol}</h3>
+
+                <p>
+                  Markets found: {protocol.market_count}
                 </p>
-              ))
-            )}
+
+                {protocol.validated_subgraphs.length > 0 ? (
+                  <ul>
+                    {protocol.validated_subgraphs.map(
+                      (subgraph) => (
+                        <li key={subgraph}>
+                          {subgraph}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                ) : (
+                  <p>
+                    No validated Ethereum Subgraphs
+                  </p>
+                )}
+              </article>
+            ))}
           </div>
-        )}
+        </section>
+      ) : (
+        protocols.length > 0 &&
+        !analysis && (
+          <section className="result-section">
+            <h2>Protocols being considered</h2>
 
-        {error && (
-          <p className="error-message">
-            {error}
-          </p>
-        )}
+            <div className="card-grid">
+              {protocolProgress.map((item) => (
+                <article
+                  className="protocol-card"
+                  key={item.protocol}
+                >
+                  <h3>{item.protocol}</h3>
 
-        {holdings.length > 0 && !analysis && (
-          <div className="analysis-results">
-            <section className="result-section">
-              <h2>Wallet holdings</h2>
+                  {item.status === 'waiting' && (
+                    <p>Waiting</p>
+                  )}
 
-              <div className="result-list">
-                {holdings.map((holding) => (
-                  <div
-                    className="result-row"
-                    key={
-                      holding.contract_address ??
-                      holding.symbol
-                    }
+                  {item.status === 'scanning' && (
+                    <p>Scanning...</p>
+                  )}
+
+                  {item.status === 'failed' && (
+                    <p>✕ Failed to analyze</p>
+                  )}
+
+                  {item.status === 'completed' &&
+                    item.analysis && (
+                      <>
+                        <p>
+                          ✓ {item.analysis.market_count} markets
+                          {' · '}
+                          {item.analysis.validated_subgraphs.length}{' '}
+                          Subgraphs
+                        </p>
+
+                        {item.analysis.validated_subgraphs.length > 0 && (
+                          <ul>
+                            {item.analysis.validated_subgraphs.map(
+                              (subgraph) => (
+                                <li key={subgraph}>
+                                  {subgraph}
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )
+      )}
+
+      {eligibleMarkets.length > 0 && !analysis && (
+        <section className="result-section">
+          <h2>Eligible markets</h2>
+
+          <div className="card-grid">
+            {eligibleMarkets.map((market) => (
+              <article
+                className="opportunity-card"
+                key={market.market_id}
+              >
+                <h3>
+                  {market.protocol} · {market.symbol}
+                </h3>
+
+                <p>{market.subgraph_name}</p>
+                <p>Rate: {formatRate(market.supply_rate)}</p>
+                <p>TVL: {formatUsd(market.tvl_usd)}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {analysis && (
+        <div className="analysis-results">
+          <section className="result-section">
+            <h2>Wallet holdings</h2>
+
+            <div className="result-list">
+              {analysis.holdings.map((holding) => (
+                <div
+                  className="result-row"
+                  key={
+                    holding.contract_address ??
+                    holding.symbol
+                  }
+                >
+                  <span>
+                    {holding.symbol}
+                  </span>
+
+                  <strong>
+                    {holding.amount}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="result-section">
+            <h2>Best opportunities</h2>
+
+            <div className="card-grid">
+              {analysis.opportunities.map(
+                (opportunity) => (
+                  <article
+                    className="opportunity-card"
+                    key={opportunity.market_id}
                   >
-                    <span>{holding.symbol}</span>
-                    <strong>{holding.amount}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
+                    <h3>
+                      {opportunity.protocol}
+                    </h3>
 
-        {protocolAnalyses.length > 0 && !analysis ? (
+                    <p>
+                      {opportunity.symbol}
+                    </p>
+
+                    <div className="result-row">
+                      <span>Supply rate</span>
+
+                      <strong>
+                        {formatRate(
+                          opportunity.supply_rate,
+                        )}
+                      </strong>
+                    </div>
+
+                    <div className="result-row">
+                      <span>TVL</span>
+
+                      <strong>
+                        {formatUsd(
+                          opportunity.tvl_usd,
+                        )}
+                      </strong>
+                    </div>
+
+                    <div className="result-row">
+                      <span>Subgraph</span>
+
+                      <strong>
+                        {
+                          opportunity.subgraph_name
+                        }
+                      </strong>
+                    </div>
+                  </article>
+                ),
+              )}
+            </div>
+          </section>
+
           <section className="result-section">
             <h2>Protocols analyzed</h2>
 
             <div className="card-grid">
-              {protocolAnalyses.map((protocol) => (
-                <article
-                  className="protocol-card"
-                  key={protocol.protocol}
-                >
-                  <h3>{protocol.protocol}</h3>
-
-                  <p>
-                    Markets found: {protocol.market_count}
-                  </p>
-
-                  {protocol.validated_subgraphs.length > 0 ? (
-                    <ul>
-                      {protocol.validated_subgraphs.map(
-                        (subgraph) => (
-                          <li key={subgraph}>
-                            {subgraph}
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  ) : (
-                    <p>
-                      No validated Ethereum Subgraphs
-                    </p>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : (
-          protocols.length > 0 &&
-          !analysis && (
-            <section className="result-section">
-              <h2>Protocols being considered</h2>
-
-              <div className="card-grid">
-                {protocolProgress.map((item) => (
+              {analysis.protocol_analyses.map(
+                (protocol) => (
                   <article
                     className="protocol-card"
-                    key={item.protocol}
+                    key={protocol.protocol}
                   >
-                    <h3>{item.protocol}</h3>
+                    <h3>
+                      {protocol.protocol}
+                    </h3>
 
-                    {item.status === 'waiting' && (
-                      <p>Waiting</p>
+                    <p>
+                      Markets found:{' '}
+                      {protocol.market_count}
+                    </p>
+
+                    {protocol.validated_subgraphs
+                      .length > 0 ? (
+                      <ul>
+                        {protocol.validated_subgraphs.map(
+                          (subgraph) => (
+                            <li key={subgraph}>
+                              {subgraph}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    ) : (
+                      <p>
+                        No validated Ethereum
+                        Subgraphs
+                      </p>
                     )}
-
-                    {item.status === 'scanning' && (
-                      <p>Scanning...</p>
-                    )}
-
-                    {item.status === 'failed' && (
-                      <p>✕ Failed to analyze</p>
-                    )}
-
-                    {item.status === 'completed' &&
-                      item.analysis && (
-                        <>
-                          <p>
-                            ✓ {item.analysis.market_count} markets
-                            {' · '}
-                            {item.analysis.validated_subgraphs.length}{' '}
-                            Subgraphs
-                          </p>
-
-                          {item.analysis.validated_subgraphs.length > 0 && (
-                            <ul>
-                              {item.analysis.validated_subgraphs.map(
-                                (subgraph) => (
-                                  <li key={subgraph}>
-                                    {subgraph}
-                                  </li>
-                                ),
-                              )}
-                            </ul>
-                          )}
-                        </>
-                      )}
                   </article>
-                ))}
-              </div>
-            </section>
-          )
-        )}
-
-        {eligibleMarkets.length > 0 && !analysis && (
-          <section className="result-section">
-            <h2>Eligible markets</h2>
-
-            <div className="card-grid">
-              {eligibleMarkets.map((market) => (
-                <article
-                  className="opportunity-card"
-                  key={market.market_id}
-                >
-                  <h3>
-                    {market.protocol} · {market.symbol}
-                  </h3>
-
-                  <p>{market.subgraph_name}</p>
-                  <p>Rate: {formatRate(market.supply_rate)}</p>
-                  <p>TVL: {formatUsd(market.tvl_usd)}</p>
-                </article>
-              ))}
+                ),
+              )}
             </div>
           </section>
-        )}
 
-        {analysis && (
-          <div className="analysis-results">
-            <section className="result-section">
-              <h2>Wallet holdings</h2>
+          <section className="result-section">
+            <h2>How this was chosen</h2>
 
-              <div className="result-list">
-                {analysis.holdings.map((holding) => (
-                  <div
-                    className="result-row"
-                    key={
-                      holding.contract_address ??
-                      holding.symbol
-                    }
+            <div className="card-grid">
+              {analysis.selection_analyses.map(
+                (selection) => (
+                  <article
+                    className="selection-card"
+                    key={selection.symbol}
                   >
-                    <span>
-                      {holding.symbol}
-                    </span>
+                    <h3>
+                      {selection.symbol}
+                    </h3>
 
-                    <strong>
-                      {holding.amount}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </section>
+                    <div className="result-row">
+                      <span>
+                        Selected protocol
+                      </span>
 
-            <section className="result-section">
-              <h2>Best opportunities</h2>
+                      <strong>
+                        {
+                          selection.selected_protocol
+                        }
+                      </strong>
+                    </div>
 
-              <div className="card-grid">
-                {analysis.opportunities.map(
-                  (opportunity) => (
-                    <article
-                      className="opportunity-card"
-                      key={opportunity.market_id}
-                    >
-                      <h3>
-                        {opportunity.protocol}
-                      </h3>
+                    <div className="result-row">
+                      <span>
+                        Selected rate
+                      </span>
 
-                      <p>
-                        {opportunity.symbol}
-                      </p>
-
-                      <div className="result-row">
-                        <span>Supply rate</span>
-
-                        <strong>
-                          {formatRate(
-                            opportunity.supply_rate,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="result-row">
-                        <span>TVL</span>
-
-                        <strong>
-                          {formatUsd(
-                            opportunity.tvl_usd,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="result-row">
-                        <span>Subgraph</span>
-
-                        <strong>
-                          {
-                            opportunity.subgraph_name
-                          }
-                        </strong>
-                      </div>
-                    </article>
-                  ),
-                )}
-              </div>
-            </section>
-
-            <section className="result-section">
-              <h2>Protocols analyzed</h2>
-
-              <div className="card-grid">
-                {analysis.protocol_analyses.map(
-                  (protocol) => (
-                    <article
-                      className="protocol-card"
-                      key={protocol.protocol}
-                    >
-                      <h3>
-                        {protocol.protocol}
-                      </h3>
-
-                      <p>
-                        Markets found:{' '}
-                        {protocol.market_count}
-                      </p>
-
-                      {protocol.validated_subgraphs
-                        .length > 0 ? (
-                        <ul>
-                          {protocol.validated_subgraphs.map(
-                            (subgraph) => (
-                              <li key={subgraph}>
-                                {subgraph}
-                              </li>
-                            ),
-                          )}
-                        </ul>
-                      ) : (
-                        <p>
-                          No validated Ethereum
-                          Subgraphs
-                        </p>
-                      )}
-                    </article>
-                  ),
-                )}
-              </div>
-            </section>
-
-            <section className="result-section">
-              <h2>How this was chosen</h2>
-
-              <div className="card-grid">
-                {analysis.selection_analyses.map(
-                  (selection) => (
-                    <article
-                      className="selection-card"
-                      key={selection.symbol}
-                    >
-                      <h3>
-                        {selection.symbol}
-                      </h3>
-
-                      <div className="result-row">
-                        <span>
-                          Selected protocol
-                        </span>
-
-                        <strong>
-                          {
-                            selection.selected_protocol
-                          }
-                        </strong>
-                      </div>
-
-                      <div className="result-row">
-                        <span>
-                          Selected rate
-                        </span>
-
-                        <strong>
-                          {formatRate(
-                            selection.selected_rate,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="result-row">
-                        <span>Best rate</span>
-
-                        <strong>
-                          {formatRate(
-                            selection.best_rate,
-                          )}
-                        </strong>
-                      </div>
-
-                      <div className="result-row">
-                        <span>Selected TVL</span>
-
-                        <strong>
-                          {formatUsd(
-                            selection.selected_tvl_usd,
-                          )}
-                        </strong>
-                      </div>
-
-                      <p className="selection-reason">
-                        {getSelectionReason(
-                          selection.best_rate,
+                      <strong>
+                        {formatRate(
                           selection.selected_rate,
-                          selection.competitive_market_count,
                         )}
-                      </p>
-                    </article>
-                  ),
-                )}
-              </div>
-            </section>
+                      </strong>
+                    </div>
 
-            <section className="result-section">
-              <h2>Recommendation</h2>
+                    <div className="result-row">
+                      <span>Best rate</span>
 
-              <p className="recommendation-summary">
-                {analysis.recommendation.summary}
-              </p>
+                      <strong>
+                        {formatRate(
+                          selection.best_rate,
+                        )}
+                      </strong>
+                    </div>
 
-              <ul>
-                {analysis.recommendation.details.map(
-                  (detail, index) => (
-                    <li key={index}>
-                      {detail}
-                    </li>
-                  ),
-                )}
-              </ul>
-            </section>
-          </div>
-        )}
-      </section>
+                    <div className="result-row">
+                      <span>Selected TVL</span>
+
+                      <strong>
+                        {formatUsd(
+                          selection.selected_tvl_usd,
+                        )}
+                      </strong>
+                    </div>
+
+                    <p className="selection-reason">
+                      {getSelectionReason(
+                        selection.best_rate,
+                        selection.selected_rate,
+                        selection.competitive_market_count,
+                      )}
+                    </p>
+                  </article>
+                ),
+              )}
+            </div>
+          </section>
+
+          <section className="result-section">
+            <h2>Recommendation</h2>
+
+            <p className="recommendation-summary">
+              {analysis.recommendation.summary}
+            </p>
+
+            <ul>
+              {analysis.recommendation.details.map(
+                (detail, index) => (
+                  <li key={index}>
+                    {detail}
+                  </li>
+                ),
+              )}
+            </ul>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
