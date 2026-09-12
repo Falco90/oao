@@ -354,8 +354,7 @@ function App() {
           </div>
 
           <p className="description">
-            Analyze your Ethereum wallet for lending
-            opportunities.
+            Discover. Compare. Optimize.
           </p>
         </div>
 
