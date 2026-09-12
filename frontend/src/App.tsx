@@ -21,12 +21,34 @@ type ProgressEvent = {
   }
 }
 
+type ProtocolStatus =
+  | 'waiting'
+  | 'scanning'
+  | 'completed'
+
+type ProtocolProgress = {
+  protocol: string
+  status: ProtocolStatus
+  analysis?: ProtocolAnalysis
+}
+
 type CompleteEvent = {
   type: 'complete'
   data: AnalyzeResponse
 }
 
-type StreamEvent = ProgressEvent | CompleteEvent
+type ProtocolStartedEvent = {
+  type: 'protocol_started'
+  protocol: string
+}
+
+type ProtocolCompletedEvent = {
+  type: 'protocol_completed'
+  protocol: string
+  analysis: ProtocolAnalysis
+}
+
+type StreamEvent = ProgressEvent | ProtocolStartedEvent | ProtocolCompletedEvent | CompleteEvent
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
@@ -37,6 +59,8 @@ function App() {
     useState<ProtocolAnalysis[]>([])
   const [analysis, setAnalysis] =
     useState<AnalyzeResponse | null>(null)
+  const [protocolProgress, setProtocolProgress] =
+    useState<ProtocolProgress[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,6 +80,7 @@ function App() {
     setHoldings([])
     setProtocols([])
     setProtocolAnalyses([])
+    setProtocolProgress([])
 
     const url =
       'http://127.0.0.1:8000/analyze' +
@@ -84,6 +109,17 @@ function App() {
           message.data?.protocols
         ) {
           setProtocols(message.data.protocols)
+
+          const initialProgress = message.data.protocols.map(
+            (protocol) => ({
+              protocol,
+              status: 'waiting' as const,
+            }),
+          )
+
+          console.log(initialProgress)
+
+          setProtocolProgress(initialProgress)
         }
 
         if (
@@ -94,6 +130,36 @@ function App() {
             message.data.protocol_analyses,
           )
         }
+      }
+
+      if (message.type === 'protocol_started') {
+        setProtocolProgress((current) => {
+          const updated = current.map((item) =>
+            item.protocol === message.protocol
+              ? {
+                ...item,
+                status: 'scanning' as const,
+              }
+              : item,
+          )
+
+
+          return updated
+        })
+      }
+
+      if (message.type === 'protocol_completed') {
+        setProtocolProgress((current) =>
+          current.map((item) =>
+            item.protocol === message.protocol
+              ? {
+                ...item,
+                status: 'completed',
+                analysis: message.analysis,
+              }
+              : item,
+          ),
+        )
       }
 
       if (message.type === 'complete') {
@@ -240,12 +306,44 @@ function App() {
               <h2>Protocols being considered</h2>
 
               <div className="card-grid">
-                {protocols.map((protocol) => (
+                {protocolProgress.map((item) => (
                   <article
                     className="protocol-card"
-                    key={protocol}
+                    key={item.protocol}
                   >
-                    <h3>{protocol}</h3>
+                    <h3>{item.protocol}</h3>
+
+                    {item.status === 'waiting' && (
+                      <p>Waiting</p>
+                    )}
+
+                    {item.status === 'scanning' && (
+                      <p>Scanning...</p>
+                    )}
+
+                    {item.status === 'completed' &&
+                      item.analysis && (
+                        <>
+                          <p>
+                            ✓ {item.analysis.market_count} markets
+                            {' · '}
+                            {item.analysis.validated_subgraphs.length}{' '}
+                            Subgraphs
+                          </p>
+
+                          {item.analysis.validated_subgraphs.length > 0 && (
+                            <ul>
+                              {item.analysis.validated_subgraphs.map(
+                                (subgraph) => (
+                                  <li key={subgraph}>
+                                    {subgraph}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          )}
+                        </>
+                      )}
                   </article>
                 ))}
               </div>
