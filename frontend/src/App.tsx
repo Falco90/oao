@@ -139,10 +139,12 @@ function App() {
     setCurrentStage('wallet')
     setStageDetails({})
 
-    const url =
-      'http://127.0.0.1:8000/analyze' +
-      `?wallet_address=${encodeURIComponent(walletAddress)}`
+    const apiUrl = import.meta.env.VITE_API_URL
 
+    const url =
+      `${apiUrl}/analyze` +
+      `?wallet_address=${encodeURIComponent(walletAddress)}`
+      
     const stream = new EventSource(url)
 
     stream.onmessage = (event) => {
