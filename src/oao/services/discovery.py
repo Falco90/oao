@@ -11,7 +11,7 @@ from oao.models.discovery import ProtocolDiscovery, SubgraphCandidate
 from oao.models.llm import model
 from oao.state import Opportunity, TokenHolding
 from oao.services.optimizer import optimize_opportunities
-from oao.services.the_graph_mcp import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
+from oao.services.the_graph import execute_subgraph_query, search_subgraphs, get_subgraph_schema, get_deployment_query_counts
 from oao.services.wallet import get_token_holdings
 
 WETH_MAINNET = (
