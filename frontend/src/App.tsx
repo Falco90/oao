@@ -448,7 +448,7 @@ function App() {
               )}
 
               {currentStage === 'wallet' && (
-                <p className="stage-running-text">&gt; analyzing wallet holdinngs
+                <p className="stage-running-text">&gt; analyzing wallet holdings
                   <span className="loading-dots">
                     <span>.</span>
                     <span>.</span>
