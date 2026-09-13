@@ -100,17 +100,11 @@ type StageDetails = {
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
-  const [progressMessages, setProgressMessages] = useState<string[]>([])
-  const [holdings, setHoldings] = useState<Holding[]>([])
-  const [protocols, setProtocols] = useState<string[]>([])
-  const [protocolAnalyses, setProtocolAnalyses] =
-    useState<ProtocolAnalysis[]>([])
+  useState<ProtocolAnalysis[]>([])
   const [analysis, setAnalysis] =
     useState<AnalyzeResponse | null>(null)
   const [protocolProgress, setProtocolProgress] =
     useState<ProtocolProgress[]>([])
-  const [eligibleMarkets, setEligibleMarkets] =
-    useState<Opportunity[]>([])
   const [currentStage, setCurrentStage] =
     useState<PipelineStage | null>(null)
   const [stageDetails, setStageDetails] =
@@ -130,12 +124,7 @@ function App() {
     setIsLoading(true)
     setError(null)
     setAnalysis(null)
-    setProgressMessages([])
-    setHoldings([])
-    setProtocols([])
-    setProtocolAnalyses([])
     setProtocolProgress([])
-    setEligibleMarkets([])
     setCurrentStage('wallet')
     setStageDetails({})
 
@@ -144,24 +133,17 @@ function App() {
     const url =
       `${apiUrl}/analyze` +
       `?wallet_address=${encodeURIComponent(walletAddress)}`
-      
+
     const stream = new EventSource(url)
 
     stream.onmessage = (event) => {
       const message: StreamEvent = JSON.parse(event.data)
 
       if (message.type === 'progress') {
-        setProgressMessages((current) => [
-          ...current,
-          message.message,
-        ])
-
         if (
           message.stage === 'analyze_wallet' &&
           message.data?.holdings
         ) {
-          setHoldings(message.data.holdings)
-
 
           setStageDetails((current) => ({
             ...current,
@@ -177,7 +159,6 @@ function App() {
           message.stage === 'discover_protocol_candidates' &&
           message.data?.protocols
         ) {
-          setProtocols(message.data.protocols)
 
           setStageDetails((current) => ({
             ...current,
@@ -202,9 +183,7 @@ function App() {
           message.stage === 'discover_opportunities' &&
           message.data?.protocol_analyses
         ) {
-          setProtocolAnalyses(
-            message.data.protocol_analyses,
-          )
+
           setCurrentStage('optimize')
         }
 
@@ -212,9 +191,6 @@ function App() {
           message.stage === 'discover_opportunities' &&
           message.data?.eligible_markets
         ) {
-          setEligibleMarkets(
-            message.data.eligible_markets,
-          )
 
           setStageDetails((current) => ({
             ...current,
@@ -309,7 +285,6 @@ function App() {
         'Unable to analyze this wallet. Please try again.',
       )
       setIsLoading(false)
-      setProgressMessages([])
       stream.close()
     }
   }
@@ -390,6 +365,12 @@ function App() {
           </button>
         </form>
       </header>
+
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
 
       {(isLoading || analysis) && (
         <>
