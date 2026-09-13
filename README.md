@@ -10,6 +10,12 @@ competitive lending markets based on yield and liquidity.
 
 The analysis is streamed to the frontend in real time.
 
+## Live App
+
+The app is live at [oao-agent.vercel.app](https://oao-agent.vercel.app/)
+
+WARNING: Due to Render's cold start policy on the free deployment plan, the first wallet request might take up to 50 seconds if the app has been inactive for a while.
+
 ## How It Works
 
 OAO processes a wallet through five stages:
